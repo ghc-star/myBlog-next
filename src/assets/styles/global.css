@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* 进入时：下往上 + 淡入 */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 整体淡入 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 漂浮光斑 */
+@keyframes float-blob {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(20px, -10px) scale(1.05);
+  }
+  50% {
+    transform: translate(0, 10px) scale(0.98);
+  }
+  75% {
+    transform: translate(-20px, -5px) scale(1.03);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* scroll 提示上下浮动 */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease forwards;
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fade-up 0.8s ease forwards;
+}
+
+.animate-blob {
+  animation: float-blob 8s ease-in-out infinite;
+}
+
+.animate-scroll-tip {
+  animation: float-y 1.8s ease-in-out infinite;
+}
