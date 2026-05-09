@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { isSecureCookie } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const state = crypto.randomUUID();
@@ -16,14 +17,14 @@ export async function GET(request: NextRequest) {
   response.cookies.set("github_oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(),
     path: "/",
     maxAge: 60 * 10,
   });
   response.cookies.set("github_return_to", returnTo, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(),
     path: "/",
     maxAge: 60 * 10,
   });

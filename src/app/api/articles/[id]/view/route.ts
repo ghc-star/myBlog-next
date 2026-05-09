@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { isSecureCookie } from "@/lib/auth";
 
 export async function POST(
   _request: Request,
@@ -51,7 +52,7 @@ export async function POST(
       response.cookies.set("visitor_key", visitorKey, {
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecureCookie(),
         path: "/",
       });
     }

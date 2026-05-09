@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { createToken, hashToken, SESSION_COOKIE } from "@/lib/auth";
+import {
+  createToken,
+  hashToken,
+  isSecureCookie,
+  SESSION_COOKIE,
+} from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -80,7 +85,7 @@ export async function GET(request: NextRequest) {
   response.cookies.set(SESSION_COOKIE, sessionToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(),
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
