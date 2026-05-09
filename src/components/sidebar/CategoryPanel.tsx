@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { getCategorySummaries } from "@/data/articles";
+import { getCategorySummaries } from "@/lib/article";
 
-function CategoryPanel() {
-  const categories = getCategorySummaries().slice(0, 6);
+async function CategoryPanel() {
+  const categories = (await getCategorySummaries()).slice(0, 6);
 
   return (
     <section className="mt-6 rounded-2xl border border-[var(--border-normal)] bg-[var(--card-bg)] p-4 shadow-[var(--shadow-card)]">

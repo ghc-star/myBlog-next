@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { articles, getCategorySummaries } from "@/data/articles";
 
 const name = "ghc".split("");
 type Props = {
@@ -15,7 +14,7 @@ export default function AboutClient({
   tagCount,
 }: Props) {
   return (
-    <section className="relative flex min-h-[70vh] flex-col items-center justify-center text-center sm:min-h-screen">
+    <section className="relative flex min-h-[70vh] flex-col items-center justify-center px-4 pt-14 text-center sm:min-h-screen sm:px-0 sm:pt-0">
       <div className="sm:-translate-x-8 sm:-translate-y-16">
         <motion.p
           initial={{ opacity: 0, y: -10 }}

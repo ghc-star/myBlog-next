@@ -1,9 +1,13 @@
-import { articles, getCategorySummaries } from "@/data/articles";
+import { getArticles, getCategorySummaries } from "@/lib/article";
 import AboutClient from "./AboutClinet";
 
-export default function AboutPage() {
-  const categories = getCategorySummaries();
+export default async function AboutPage() {
+  const [articles, categories] = await Promise.all([
+    getArticles(),
+    getCategorySummaries(),
+  ]);
   const tagCount = new Set(articles.flatMap((item) => item.tags)).size;
+
   return (
     <AboutClient
       articleCount={articles.length}

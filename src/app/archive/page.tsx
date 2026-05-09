@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { articles } from "@/data/articles";
+import { getArticles, type ArticleRecord } from "@/lib/article";
 
 function getYear(date: string) {
   return new Date(date).getFullYear();
@@ -17,7 +17,8 @@ function getDayText(date: string) {
   return `${month}-${day}`;
 }
 
-export default function ArchivePage() {
+export default async function ArchivePage() {
+  const articles = await getArticles();
   const sortedArticles = [...articles].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
@@ -38,7 +39,7 @@ export default function ArchivePage() {
       map[year][month].push(article);
       return map;
     },
-    {} as Record<number, Record<number, typeof articles>>,
+    {} as Record<number, Record<number, ArticleRecord[]>>,
   );
 
   const years = Object.keys(archiveMap)

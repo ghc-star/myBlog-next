@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import ArticleCard from "@/components/article/ArticleCard";
-import { articles, getCategorySummaries } from "@/data/articles";
+import { getArticlesByCategorySlug, getCategorySummaries } from "@/lib/article";
 
 export default async function CategoryPage({
   params,
@@ -8,15 +8,15 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const category = getCategorySummaries().find((item) => item.slug === slug);
+  const [categories, categoryArticles] = await Promise.all([
+    getCategorySummaries(),
+    getArticlesByCategorySlug(slug),
+  ]);
+  const category = categories.find((item) => item.slug === slug);
 
   if (!category) {
     notFound();
   }
-
-  const categoryArticles = articles.filter(
-    (article) => article.categorySlug === category.slug,
-  );
 
   return (
     <section className="mx-auto w-full max-w-[900px] px-4 py-10">

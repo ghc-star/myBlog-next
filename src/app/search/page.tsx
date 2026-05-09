@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import ArticleCard from "@/components/article/ArticleCard";
 import SearchBox from "@/components/sidebar/SearchBox";
-import { articles } from "@/data/articles";
+import { getArticles, type ArticleRecord } from "@/lib/article";
 
 function normalize(text: string) {
   return text.toLowerCase().trim();
 }
 
-function searchArticles(keyword: string) {
+function searchArticles(articles: ArticleRecord[], keyword: string) {
   const q = normalize(keyword);
   if (!q) return [];
 
@@ -26,7 +26,8 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const keyword = params.q?.trim() ?? "";
-  const results = searchArticles(keyword);
+  const articles = await getArticles();
+  const results = searchArticles(articles, keyword);
 
   return (
     <section className="mx-auto w-full max-w-[900px] px-4 py-10">

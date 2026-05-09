@@ -18,6 +18,14 @@ export interface ArticleRecord {
   visits: number;
   comments: number;
 }
+
+export interface CategorySummary {
+  name: string;
+  slug: string;
+  count: number;
+  color: string;
+}
+
 type RawArticleRow = RowDataPacket & {
   id: string;
   title: string;
@@ -34,6 +42,14 @@ type RawArticleRow = RowDataPacket & {
   visits: number;
   comments: number;
 };
+
+type RawCategorySummaryRow = RowDataPacket & {
+  name: string;
+  slug: string;
+  count: number;
+  color: string | null;
+};
+
 function parseTags(tags: unknown): string[] {
   if (Array.isArray(tags)) {
     return tags;
@@ -42,7 +58,15 @@ function parseTags(tags: unknown): string[] {
   if (typeof tags !== "string") {
     return [];
   }
-  return [];
+
+  try {
+    const parsed = JSON.parse(tags);
+    return Array.isArray(parsed)
+      ? parsed.filter((tag): tag is string => typeof tag === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 function toArticle(row: RawArticleRow): ArticleRecord {
   return {
@@ -93,4 +117,26 @@ export async function getArticlesByCategorySlug(slug: string) {
   );
 
   return rows.map(toArticle);
+}
+
+export async function getCategorySummaries(): Promise<CategorySummary[]> {
+  const [rows] = await db.query<RawCategorySummaryRow[]>(
+    `
+    SELECT
+      category AS name,
+      category_slug AS slug,
+      COUNT(*) AS count,
+      MIN(color) AS color
+    FROM articles
+    GROUP BY category, category_slug
+    ORDER BY count DESC, name ASC
+    `,
+  );
+
+  return rows.map((row) => ({
+    name: row.name,
+    slug: row.slug,
+    count: Number(row.count),
+    color: row.color ?? "#0ea5e9",
+  }));
 }
