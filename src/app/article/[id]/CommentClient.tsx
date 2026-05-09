@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ScanFace,
   MessageCircle,
@@ -36,6 +36,12 @@ function formatDate(date: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function redirectToGithubLogin() {
+  window.location.href = `/api/auth/github?returnTo=${encodeURIComponent(
+    window.location.pathname,
+  )}`;
 }
 
 function buildDouyinCommentTree(comments: ApiComment[]): CommentNode[] {
@@ -112,13 +118,141 @@ function sortReplies(
   });
 }
 
-function DouyinReplyItem({
-  reply,
-  onReply,
+function InlineReplyBox({
+  articleId,
+  parent,
+  onCancel,
+  onSuccess,
 }: {
-  reply: ReplyNode;
-  onReply: (target: ApiComment) => void;
+  articleId: string;
+  parent: ApiComment;
+  onCancel: () => void;
+  onSuccess: () => Promise<void>;
 }) {
+  const [replyContent, setReplyContent] = useState("");
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  const replyBoxRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (!replyBoxRef.current) return;
+
+      if (!replyBoxRef.current.contains(target)) {
+        onCancel();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onCancel]);
+  async function submitReply() {
+    const content = replyContent.trim();
+
+    if (!content) {
+      alert("回复内容不能为空");
+      return;
+    }
+
+    setReplySubmitting(true);
+
+    try {
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          articleId,
+          content,
+          parentId: parent.id,
+        }),
+      });
+
+      if (res.status === 401) {
+        redirectToGithubLogin();
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "回复失败");
+      }
+
+      setReplyContent("");
+      onCancel();
+      await onSuccess();
+    } catch (error) {
+      console.error("Create reply error:", error);
+      alert(error instanceof Error ? error.message : "回复失败");
+    } finally {
+      setReplySubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      ref={replyBoxRef}
+      className="mt-3 rounded-2xl border border-[var(--border-normal)] bg-[var(--card-bg)] p-3"
+    >
+      <div className="mb-2 text-xs text-[var(--text-sub)]">
+        回复{" "}
+        <span className="font-semibold text-[var(--theme-accent)]">
+          @{parent.author}
+        </span>
+      </div>
+
+      <textarea
+        value={replyContent}
+        onChange={(event) => setReplyContent(event.target.value)}
+        placeholder={`回复 @${parent.author}`}
+        maxLength={2000}
+        className="min-h-[90px] w-full resize-y rounded-xl border border-[var(--border-normal)] bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-strong)] outline-none placeholder:text-[var(--text-faint)]"
+      />
+
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-[var(--text-sub)]">
+          {replyContent.length}/2000
+        </span>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl px-3 py-1.5 text-xs text-[var(--text-sub)] transition hover:bg-[var(--card-bg-soft)] hover:text-[var(--text-title)]"
+          >
+            取消
+          </button>
+
+          <button
+            type="button"
+            onClick={submitReply}
+            disabled={replySubmitting || !replyContent.trim()}
+            className="rounded-xl bg-[#238636] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2ea043] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {replySubmitting ? "回复中..." : "回复"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DouyinReplyItem({
+  articleId,
+  reply,
+  onSuccess,
+}: {
+  articleId: string;
+  reply: ReplyNode;
+  onSuccess: () => Promise<void>;
+}) {
+  const [showReplyBox, setShowReplyBox] = useState(false);
+
   return (
     <div className="flex gap-3">
       <Image
@@ -166,28 +300,40 @@ function DouyinReplyItem({
 
           <button
             type="button"
-            onClick={() => onReply(reply)}
+            onClick={() => setShowReplyBox((prev) => !prev)}
             className="inline-flex items-center gap-1 transition hover:text-[var(--text-title)]"
           >
             <MessageCircle size={13} />
             <span>回复</span>
           </button>
         </div>
+
+        {showReplyBox ? (
+          <InlineReplyBox
+            articleId={articleId}
+            parent={reply}
+            onCancel={() => setShowReplyBox(false)}
+            onSuccess={onSuccess}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
 
 function DouyinCommentItem({
+  articleId,
   comment,
   sort,
-  onReply,
+  onSuccess,
 }: {
+  articleId: string;
   comment: CommentNode;
   sort: "oldest" | "latest";
-  onReply: (target: ApiComment) => void;
+  onSuccess: () => Promise<void>;
 }) {
   const [showReplies, setShowReplies] = useState(true);
+  const [showReplyBox, setShowReplyBox] = useState(false);
   const hasReplies = comment.replies.length > 0;
 
   const sortedReplies = useMemo(() => {
@@ -232,13 +378,22 @@ function DouyinCommentItem({
 
           <button
             type="button"
-            onClick={() => onReply(comment)}
+            onClick={() => setShowReplyBox((prev) => !prev)}
             className="inline-flex items-center gap-1 transition hover:text-[var(--text-title)]"
           >
             <MessageCircle size={13} />
             <span>回复</span>
           </button>
         </div>
+
+        {showReplyBox ? (
+          <InlineReplyBox
+            articleId={articleId}
+            parent={comment}
+            onCancel={() => setShowReplyBox(false)}
+            onSuccess={onSuccess}
+          />
+        ) : null}
 
         {hasReplies ? (
           <div className="mt-3">
@@ -257,8 +412,9 @@ function DouyinCommentItem({
                 {sortedReplies.map((reply) => (
                   <DouyinReplyItem
                     key={reply.id}
+                    articleId={articleId}
                     reply={reply}
-                    onReply={onReply}
+                    onSuccess={onSuccess}
                   />
                 ))}
               </div>
@@ -277,7 +433,6 @@ export default function CommentClient({ articleId }: { articleId: string }) {
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [replyTarget, setReplyTarget] = useState<ApiComment | null>(null);
 
   async function fetchComments() {
     if (!articleId) return;
@@ -340,14 +495,12 @@ export default function CommentClient({ articleId }: { articleId: string }) {
         body: JSON.stringify({
           articleId,
           content,
-          parentId: replyTarget?.id ?? null,
+          parentId: null,
         }),
       });
 
       if (res.status === 401) {
-        window.location.href = `/api/auth/github?returnTo=${encodeURIComponent(
-          window.location.pathname,
-        )}`;
+        redirectToGithubLogin();
         return;
       }
 
@@ -358,7 +511,6 @@ export default function CommentClient({ articleId }: { articleId: string }) {
       }
 
       setDraft("");
-      setReplyTarget(null);
       setMode("input");
       await fetchComments();
     } catch (error) {
@@ -367,12 +519,6 @@ export default function CommentClient({ articleId }: { articleId: string }) {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function handleLogin() {
-    window.location.href = `/api/auth/github?returnTo=${encodeURIComponent(
-      window.location.pathname,
-    )}`;
   }
 
   return (
@@ -469,34 +615,11 @@ export default function CommentClient({ articleId }: { articleId: string }) {
           </div>
 
           <div className="p-3">
-            {replyTarget ? (
-              <div className="mb-3 flex items-center justify-between rounded-2xl bg-[var(--card-bg-soft)] px-4 py-3 text-sm text-[var(--text-sub)]">
-                <span>
-                  正在回复{" "}
-                  <strong className="text-[var(--theme-accent)]">
-                    @{replyTarget.author}
-                  </strong>
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => setReplyTarget(null)}
-                  className="text-[var(--text-sub)] transition hover:text-[var(--text-title)]"
-                >
-                  取消
-                </button>
-              </div>
-            ) : null}
-
             {mode === "input" ? (
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder={
-                  replyTarget
-                    ? `回复 @${replyTarget.author}`
-                    : "写下你的评论。未登录时提交会跳转 GitHub 登录。"
-                }
+                placeholder="写下你的评论。未登录时提交会跳转 GitHub 登录。"
                 maxLength={2000}
                 className="min-h-[140px] w-full resize-y rounded-2xl border border-[var(--border-normal)] bg-[var(--card-bg)] px-5 py-4 text-base text-[var(--text-strong)] outline-none placeholder:text-[var(--text-faint)]"
               />
@@ -521,7 +644,7 @@ export default function CommentClient({ articleId }: { articleId: string }) {
             <div className="mt-4 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={handleLogin}
+                onClick={redirectToGithubLogin}
                 className="inline-flex items-center gap-3 rounded-2xl border border-[var(--border-normal)] bg-[var(--card-bg)] px-4 py-2 text-sm font-semibold text-[var(--text-strong)] transition hover:border-[var(--theme-accent)]"
               >
                 <ScanFace size={18} />
@@ -548,9 +671,10 @@ export default function CommentClient({ articleId }: { articleId: string }) {
             commentTree.map((comment) => (
               <DouyinCommentItem
                 key={comment.id}
+                articleId={articleId}
                 comment={comment}
                 sort={sort}
-                onReply={setReplyTarget}
+                onSuccess={fetchComments}
               />
             ))
           ) : (
