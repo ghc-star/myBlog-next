@@ -1,8 +1,9 @@
-import { Article } from "../../data/articles";
+import type { ArticleRecord } from "@/lib/article";
 import ArticleCard from "./ArticleCard";
 import Link from "next/link";
+
 interface ArticleListProps {
-  articles: Article[];
+  articles: ArticleRecord[];
   currentPage: number;
   totalPages: number;
 }
