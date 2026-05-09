@@ -14,7 +14,7 @@ export default function EssaysPage() {
     <>
       <header
         className={[
-          "relative h-[35vh] w-[100vw]",
+          "relative h-[35vh] w-full",
           "bg-cover bg-center bg-no-repeat",
         ].join(" ")}
         style={{ backgroundImage: `url(${essayImage.src})` }}
