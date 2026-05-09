@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 
 export async function POST(
   _request: Request,
@@ -35,6 +36,7 @@ export async function POST(
           `,
           [id],
         );
+        revalidatePath("/");
       }
       await conn.commit();
     } catch (error) {

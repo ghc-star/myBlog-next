@@ -6,6 +6,7 @@ import ReactMarkdown, { Components } from "react-markdown";
 import React from "react";
 import remarkGfm from "remark-gfm";
 import { ArticleRecord } from "@/lib/article";
+import CommentClient from "./CommentClient";
 
 function slugify(text: string) {
   return text
@@ -341,6 +342,8 @@ export default function ArticleDetailClient({
             {renderedContent}
           </ReactMarkdown>
         </article>
+
+        <CommentClient commentCount={article.comments || 8} replyCount={14} />
       </main>
 
       <aside className="hidden self-start min-[900px]:sticky min-[900px]:top-6 min-[900px]:block">
