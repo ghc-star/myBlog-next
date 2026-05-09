@@ -343,7 +343,11 @@ export default function ArticleDetailClient({
           </ReactMarkdown>
         </article>
 
-        <CommentClient commentCount={article.comments || 8} replyCount={14} />
+        <CommentClient
+          articleId={article.id}
+          commentCount={article.comments || 8}
+          replyCount={14}
+        />
       </main>
 
       <aside className="hidden self-start min-[900px]:sticky min-[900px]:top-6 min-[900px]:block">
