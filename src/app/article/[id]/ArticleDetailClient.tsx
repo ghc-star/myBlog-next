@@ -5,6 +5,8 @@ import ArticleToc, { type TocItem } from "@/components/ArticleRight/ArticleToc";
 import ReactMarkdown, { Components } from "react-markdown";
 import React from "react";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArticleRecord } from "@/lib/article";
 import CommentClient from "./CommentClient";
 
@@ -105,6 +107,75 @@ export default function ArticleDetailClient({
     window.scrollTo(0, 0);
   }, []);
 
+  function CodeBlock({ children }: { children: React.ReactNode }) {
+    const [copied, setCopied] = useState(false);
+
+    // 从 children 中提取语言和代码文本
+    let language = "";
+    let codeText = "";
+
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement<{ className?: string; children?: React.ReactNode }>(child)) {
+        const className = child.props.className ?? "";
+        language = className.replace("language-", "");
+        codeText = getNodeText(child.props.children);
+      }
+    });
+
+    if (!codeText) {
+      codeText = getNodeText(children);
+    }
+
+    function handleCopy() {
+      navigator.clipboard.writeText(codeText).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    }
+
+    return (
+      <div className="group relative mb-6 overflow-hidden rounded-2xl border border-[var(--border-normal)] bg-[#fafbfc]">
+        <div className="flex items-center justify-between border-b border-[var(--border-normal)] bg-[#f4f5f7] px-4 py-2">
+          <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
+            {language || "code"}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded-md border border-[var(--border-normal)] bg-white px-2.5 py-1 text-xs text-[var(--text-sub)] transition hover:border-[var(--theme-accent)] hover:text-[var(--text-title)]"
+          >
+            {copied ? "已复制" : "Copy"}
+          </button>
+        </div>
+        <SyntaxHighlighter
+          language={language || "text"}
+          style={oneLight}
+          showLineNumbers
+          lineNumberStyle={{
+            minWidth: "2.5em",
+            paddingRight: "1em",
+            color: "#c0c4cc",
+            fontSize: "13px",
+            userSelect: "none",
+          }}
+          customStyle={{
+            margin: 0,
+            padding: "1rem 1.25rem",
+            background: "transparent",
+            fontSize: "13px",
+            lineHeight: "1.7",
+            overflow: "auto",
+          }}
+          codeTagProps={{
+            style: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+          }}
+        >
+          {codeText.replace(/\n$/, "")}
+        </SyntaxHighlighter>
+      </div>
+    );
+  }
+
   const components = useMemo<Components>(() => {
     return {
       h1: HeadingOne,
@@ -199,29 +270,14 @@ export default function ArticleDetailClient({
           {children}
         </tr>
       ),
-      pre: ({ children }) => (
-        <div className="group relative mb-6">
-          <pre className="overflow-x-auto rounded-2xl bg-[var(--article-code-bg)] p-5 text-[13px] leading-6 text-[var(--article-code-text)] shadow-inner">
-            {children}
-          </pre>
-        </div>
-      ),
+      pre: ({ children }) => {
+        return <CodeBlock>{children}</CodeBlock>;
+      },
       code: ({ children, className }) => {
-        // 代码块内的 code（有 className 如 language-xxx）
+        // 代码块内的 code 由 CodeBlock 处理，这里只处理行内 code
         if (className) {
-          const lang = className.replace("language-", "");
-          return (
-            <code className="block bg-transparent p-0 text-inherit">
-              {lang ? (
-                <span className="pointer-events-none absolute right-3 top-3 select-none rounded bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--article-code-text)]/50">
-                  {lang}
-                </span>
-              ) : null}
-              {children}
-            </code>
-          );
+          return <code className={className}>{children}</code>;
         }
-        // 行内 code
         return (
           <code className="rounded-md bg-[var(--card-bg-soft)] px-1.5 py-0.5 text-[13px] font-medium text-[var(--text-title)]">
             {children}

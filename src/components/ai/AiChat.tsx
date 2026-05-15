@@ -44,11 +44,35 @@ export default function AiChat() {
         className="flex-1 space-y-4 overflow-y-auto px-4 py-4"
       >
         {messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-center text-sm text-(--text-faint)">
-              问我任何关于博客内容的问题，<br />
-              我会从文章中检索相关信息回答你。
-            </p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-(--theme-accent-soft)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-(--theme-accent)">
+                <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
+                <line x1="10" y1="22" x2="14" y2="22" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-(--text-title)">
+                你好，我是博客 AI 助手
+              </p>
+              <p className="mt-1 text-xs text-(--text-sub)">
+                可以问我关于博客文章的任何问题，我会从内容中检索相关信息回答你。
+              </p>
+            </div>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {["这个博客有哪些文章？", "讲讲 Next.js 迁移", "推荐一篇算法文章"].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => {
+                    setInput(q);
+                  }}
+                  className="rounded-full border border-(--border-normal) bg-(--card-bg) px-3 py-1.5 text-xs text-(--text-strong) transition hover:border-(--theme-accent) hover:text-(--theme-accent)"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg) => {
