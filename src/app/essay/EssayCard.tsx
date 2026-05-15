@@ -174,12 +174,6 @@ export default function EssayCard({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{essay.author}</h2>
-            <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-(--card-bg)">
-              LV6
-            </span>
-            <span className="rounded border border-green-400 px-2 py-0.5 text-xs text-green-600">
-              太乙玄仙
-            </span>
             {moodLabel ? (
               <span className="rounded bg-(--theme-accent-soft) px-2 py-0.5 text-xs text-(--theme-accent)">
                 {moodLabel}

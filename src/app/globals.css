@@ -67,6 +67,11 @@ html[data-theme="dark"] {
 html {
   min-height: 100%;
   scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+}
+
+html::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / Edge */
 }
 
 body {

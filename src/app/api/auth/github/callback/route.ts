@@ -10,10 +10,21 @@ import {
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
+  const error = request.nextUrl.searchParams.get("error");
   const savedState = request.cookies.get("github_oauth_state")?.value;
   const returnTo = request.cookies.get("github_return_to")?.value || "/";
 
-  if (!code || !state || state !== savedState) {
+  // 用户在 GitHub 页面点了"取消"
+  if (error || !code) {
+    const response = NextResponse.redirect(
+      new URL(returnTo, process.env.APP_URL),
+    );
+    response.cookies.delete("github_oauth_state");
+    response.cookies.delete("github_return_to");
+    return response;
+  }
+
+  if (!state || state !== savedState) {
     return NextResponse.json(
       { message: "Invalid OAuth state" },
       { status: 400 },

@@ -55,7 +55,7 @@ function DesktopSidebarControls() {
 
       <div
         ref={themeToggleRef}
-        className={`absolute bottom-6 left-4 right-4 transition-opacity duration-200 ${
+        className={`absolute bottom-6 left-4 right-4 flex items-center justify-between transition-opacity duration-200 ${
           hideThemeToggle ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >

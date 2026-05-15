@@ -140,3 +140,100 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
     color: row.color ?? "#0ea5e9",
   }));
 }
+
+
+export interface ArticleStats {
+  total: number;
+  totalVisits: number;
+  totalComments: number;
+  recentArticles: ArticleRecord[];
+}
+
+export async function getArticleStats(): Promise<ArticleStats> {
+  const [totalsRows] = await db.query<RowDataPacket[]>(
+    `SELECT
+       COUNT(*) AS total,
+       COALESCE(SUM(visits), 0) AS total_visits,
+       COALESCE(SUM(comments), 0) AS total_comments
+     FROM articles`,
+  );
+
+  const totals = totalsRows[0] ?? {};
+  const [recentRows] = await db.query<RawArticleRow[]>(
+    `SELECT * FROM articles ORDER BY published_at DESC LIMIT 5`,
+  );
+
+  return {
+    total: Number(totals.total ?? 0),
+    totalVisits: Number(totals.total_visits ?? 0),
+    totalComments: Number(totals.total_comments ?? 0),
+    recentArticles: recentRows.map(toArticle),
+  };
+}
+
+export interface UpdateArticleInput {
+  title: string;
+  desc: string;
+  category: string;
+  categorySlug: string;
+  tags: string[];
+  cover: string | null;
+  color: string;
+  content: string;
+}
+
+export async function updateArticle(id: string, input: UpdateArticleInput) {
+  const now = new Date();
+  await db.execute(
+    `UPDATE articles SET
+       title = ?,
+       \`desc\` = ?,
+       tags = ?,
+       category = ?,
+       category_slug = ?,
+       cover = ?,
+       content = ?,
+       color = ?,
+       updated_at = ?
+     WHERE id = ?`,
+    [
+      input.title,
+      input.desc,
+      JSON.stringify(input.tags),
+      input.category,
+      input.categorySlug,
+      input.cover ?? null,
+      input.content,
+      input.color,
+      now,
+      id,
+    ],
+  );
+}
+
+export async function deleteArticle(id: string) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(`DELETE FROM article_views WHERE article_id = ?`, [id]);
+    await conn.execute(`DELETE FROM article_likes WHERE article_id = ?`, [id]);
+    await conn.execute(
+      `DELETE FROM article_reactions WHERE article_id = ?`,
+      [id],
+    );
+    await conn.execute(
+      `DELETE comment_likes FROM comment_likes
+       JOIN comments ON comments.id = comment_likes.comment_id
+       WHERE comments.article_id = ?`,
+      [id],
+    );
+    await conn.execute(`DELETE FROM comments WHERE article_id = ?`, [id]);
+    await conn.execute(`DELETE FROM articles WHERE id = ?`, [id]);
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}

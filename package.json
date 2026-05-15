@@ -10,16 +10,21 @@
     "seed:articles": "tsx scripts/seed-articles.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.63",
+    "@ai-sdk/react": "^3.0.184",
+    "@qdrant/js-client-rest": "^1.18.0",
+    "ai": "^6.0.182",
     "dotenv": "^17.4.2",
     "echarts": "^6.0.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "mysql2": "^3.22.3",
-    "next": "16.2.5",
+    "next": "^16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
@@ -31,6 +36,7 @@
     "eslint-config-next": "16.2.5",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "undici": "^8.2.0"
   }
 }

@@ -118,6 +118,31 @@ export default function ArticleDetailClient({
       p: ({ children }) => (
         <p className="mb-4 leading-8 text-[var(--text-strong)]">{children}</p>
       ),
+      a: ({ href, children }) => (
+        <a
+          href={href}
+          target={href?.startsWith("http") ? "_blank" : undefined}
+          rel={href?.startsWith("http") ? "noreferrer noopener" : undefined}
+          className="font-medium text-[var(--theme-accent)] underline decoration-[var(--theme-accent-border)] underline-offset-2 transition hover:decoration-[var(--theme-accent)]"
+        >
+          {children}
+        </a>
+      ),
+      img: ({ src, alt }) => (
+        <span className="my-6 block text-center">
+          <img
+            src={src}
+            alt={alt ?? ""}
+            loading="lazy"
+            className="inline-block max-w-full rounded-xl shadow-[var(--shadow-card)]"
+          />
+          {alt ? (
+            <span className="mt-2 block text-xs text-[var(--text-faint)]">
+              {alt}
+            </span>
+          ) : null}
+        </span>
+      ),
       ul: ({ children }) => (
         <ul className="mb-4 list-disc pl-6 text-[var(--text-strong)]">
           {children}
@@ -138,28 +163,71 @@ export default function ArticleDetailClient({
           {children}
         </strong>
       ),
+      del: ({ children }) => (
+        <del className="text-[var(--text-faint)] line-through">{children}</del>
+      ),
       blockquote: ({ children }) => (
-        <blockquote className="mb-6 rounded-r-2xl border-l-4 border-[var(--theme-accent)] bg-[var(--card-bg-soft)] px-5 py-3 text-[var(--text-strong)]">
+        <blockquote className="mb-6 rounded-r-2xl border-l-4 border-[var(--theme-accent)] bg-[var(--card-bg-soft)] px-5 py-3 text-[var(--text-strong)] [&>p]:mb-0 [&>p:last-child]:mb-0">
           {children}
         </blockquote>
       ),
       hr: () => <hr className="my-8 border-[var(--border-normal)]" />,
+      table: ({ children }) => (
+        <div className="mb-6 overflow-x-auto rounded-xl border border-[var(--border-normal)]">
+          <table className="w-full border-collapse text-sm">
+            {children}
+          </table>
+        </div>
+      ),
+      thead: ({ children }) => (
+        <thead className="bg-[var(--card-bg-soft)] text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-sub)]">
+          {children}
+        </thead>
+      ),
+      th: ({ children }) => (
+        <th className="border-b border-[var(--border-normal)] px-4 py-2.5 font-semibold">
+          {children}
+        </th>
+      ),
+      td: ({ children }) => (
+        <td className="border-b border-[var(--border-normal)] px-4 py-2.5 text-[var(--text-strong)]">
+          {children}
+        </td>
+      ),
+      tr: ({ children }) => (
+        <tr className="transition even:bg-[var(--card-bg-soft)]/50 hover:bg-[var(--card-bg-soft)]">
+          {children}
+        </tr>
+      ),
       pre: ({ children }) => (
-        <pre className="mb-6 overflow-x-auto rounded-2xl bg-[var(--article-code-bg)] p-4 text-sm leading-7 text-[var(--article-code-text)]">
-          {children}
-        </pre>
+        <div className="group relative mb-6">
+          <pre className="overflow-x-auto rounded-2xl bg-[var(--article-code-bg)] p-5 text-[13px] leading-6 text-[var(--article-code-text)] shadow-inner">
+            {children}
+          </pre>
+        </div>
       ),
-      code: ({ children, className }) => (
-        <code
-          className={
-            className
-              ? "bg-transparent p-0 text-inherit"
-              : "rounded bg-[var(--card-bg-soft)] px-1 py-0.5 text-sm text-[var(--text-title)]"
-          }
-        >
-          {children}
-        </code>
-      ),
+      code: ({ children, className }) => {
+        // 代码块内的 code（有 className 如 language-xxx）
+        if (className) {
+          const lang = className.replace("language-", "");
+          return (
+            <code className="block bg-transparent p-0 text-inherit">
+              {lang ? (
+                <span className="pointer-events-none absolute right-3 top-3 select-none rounded bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--article-code-text)]/50">
+                  {lang}
+                </span>
+              ) : null}
+              {children}
+            </code>
+          );
+        }
+        // 行内 code
+        return (
+          <code className="rounded-md bg-[var(--card-bg-soft)] px-1.5 py-0.5 text-[13px] font-medium text-[var(--text-title)]">
+            {children}
+          </code>
+        );
+      },
     };
   }, []);
 
@@ -264,24 +332,17 @@ export default function ArticleDetailClient({
 
     const containerRect = container.getBoundingClientRect();
     const itemRect = activeItem.getBoundingClientRect();
-    const bottomGap = 120;
-    const topGap = 80;
-    const itemBottomToContainerBottom = containerRect.bottom - itemRect.bottom;
-    const itemTopToContainerTop = itemRect.top - containerRect.top;
 
-    if (itemBottomToContainerBottom < bottomGap) {
-      container.scrollTo({
-        top: container.scrollTop + bottomGap - itemBottomToContainerBottom,
-        behavior: "smooth",
-      });
-    }
+    // 只在 active item 真正超出可视区域时才滚动，避免底部抖动
+    const isAboveView = itemRect.top < containerRect.top;
+    const isBelowView = itemRect.bottom > containerRect.bottom;
 
-    if (itemTopToContainerTop < topGap) {
-      container.scrollTo({
-        top: container.scrollTop - (topGap - itemTopToContainerTop),
-        behavior: "smooth",
-      });
-    }
+    if (!isAboveView && !isBelowView) return;
+
+    activeItem.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth",
+    });
   }, [activeId]);
   useEffect(() => {
     fetch(`/api/articles/${article.id}/view`, {
