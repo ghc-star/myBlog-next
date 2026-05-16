@@ -6,6 +6,7 @@ export {
   upsertChunks,
   searchChunks,
   deleteBySource,
+  makePointId,
   type ChunkPayload,
 } from "./vector";
 export { chunkMarkdown, type Chunk } from "./chunk";

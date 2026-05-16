@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 import { EMBEDDING_DIM } from "./embed";
@@ -78,4 +79,30 @@ export async function deleteBySource(sourceType: string, sourceId: string) {
       ],
     },
   });
+}
+
+/**
+ * 把 (sourceType, sourceId, chunkIndex) 映射成确定性 UUID
+ * Qdrant 的 point id 必须是无符号整数或 UUID
+ * 同一份内容多次跑出来的 UUID 一致，可以正确覆盖旧数据，不会留垃圾点
+ */
+export function makePointId(
+  sourceType: string,
+  sourceId: string,
+  chunkIndex: number,
+): string {
+  const hash = crypto
+    .createHash("sha256")
+    .update(`${sourceType}:${sourceId}:${chunkIndex}`)
+    .digest("hex");
+
+  // 拼成 UUID v4 格式（确定性，但格式合规）
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    "4" + hash.slice(13, 16),
+    ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) +
+      hash.slice(17, 20),
+    hash.slice(20, 32),
+  ].join("-");
 }

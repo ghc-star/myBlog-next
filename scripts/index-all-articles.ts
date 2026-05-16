@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import mysql from "mysql2/promise";
 import { QdrantClient } from "@qdrant/js-client-rest";
+import crypto from "node:crypto";
 
 config({ path: ".env.development.local" });
 
@@ -58,6 +59,23 @@ function chunkMarkdown(content: string, maxLen = 800): string[] {
   return chunks;
 }
 
+function makePointId(articleId: string, chunkIndex: number): string {
+  const hash = crypto
+    .createHash("sha256")
+    .update(`article:${articleId}:${chunkIndex}`)
+    .digest("hex");
+
+  // 拼成 UUID v4 格式（虽然不是真随机，但格式合规，Qdrant 接受）
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    "4" + hash.slice(13, 16),
+    ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) +
+      hash.slice(17, 20),
+    hash.slice(20, 32),
+  ].join("-");
+}
+
 // --- Main ---
 async function main() {
   console.log("连接数据库...");
@@ -112,7 +130,7 @@ async function main() {
       const vectors = await embedBatch(batch);
 
       const points = batch.map((text, k) => ({
-        id: `${article.id}-${j + k}`,
+        id: makePointId(article.id, j + k),
         vector: vectors[k],
         payload: {
           sourceType: "article",
@@ -123,6 +141,7 @@ async function main() {
           url: `/article/${article.id}`,
         },
       }));
+
 
       await qdrant.upsert(COLLECTION, { wait: true, points });
       totalChunks += points.length;
