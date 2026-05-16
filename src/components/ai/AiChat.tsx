@@ -59,17 +59,24 @@ export default function AiChat() {
                 可以问我关于博客文章的任何问题，我会从内容中检索相关信息回答你。
               </p>
             </div>
-            <div className="mt-2 flex flex-wrap justify-center gap-2">
-              {["这个博客有哪些文章？", "讲讲 Next.js 迁移", "推荐一篇算法文章"].map((q) => (
+            <div className="mt-2 grid w-full max-w-[320px] grid-cols-2 gap-2">
+              {[
+                { icon: "📚", label: "博客有哪些文章？", q: "博客里有哪些文章？" },
+                { icon: "📊", label: "博客整体情况", q: "博客整体情况是什么样？" },
+                { icon: "🔍", label: "讲讲 Next.js 迁移", q: "讲讲 Next.js 迁移相关的内容" },
+                { icon: "💡", label: "推荐一篇文章", q: "推荐一篇值得读的文章" },
+                { icon: "🌤️", label: "今天天气", q: "北京今天天气怎么样？" },
+                { icon: "💬", label: "来一句", q: "来一句好的句子" },
+              ].map((item) => (
                 <button
-                  key={q}
+                  key={item.label}
                   type="button"
-                  onClick={() => {
-                    setInput(q);
-                  }}
-                  className="rounded-full border border-(--border-normal) bg-(--card-bg) px-3 py-1.5 text-xs text-(--text-strong) transition hover:border-(--theme-accent) hover:text-(--theme-accent)"
+                  disabled={isLoading}
+                  onClick={() => sendMessage({ text: item.q })}
+                  className="flex items-center gap-2 rounded-xl border border-(--border-normal) bg-(--card-bg) px-3 py-2 text-left text-xs text-(--text-strong) transition hover:border-(--theme-accent) hover:bg-(--theme-accent-soft) hover:text-(--theme-accent) disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {q}
+                  <span className="text-base leading-none">{item.icon}</span>
+                  <span className="truncate">{item.label}</span>
                 </button>
               ))}
             </div>

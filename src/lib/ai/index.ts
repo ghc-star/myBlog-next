@@ -9,3 +9,4 @@ export {
   type ChunkPayload,
 } from "./vector";
 export { chunkMarkdown, type Chunk } from "./chunk";
+export { blogTools } from "./tools";
