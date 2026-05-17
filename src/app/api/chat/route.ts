@@ -42,10 +42,10 @@ function extractTextFromMessage(msg: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ message: "请先登录" }, { status: 401 });
-  }
+  // const user = await getCurrentUser();
+  // if (!user) {
+  //   return NextResponse.json({ message: "请先登录" }, { status: 401 });
+  // }
 
   const body = await request.json();
   const rawMessages: unknown[] = Array.isArray(body?.messages) ? body.messages : [];

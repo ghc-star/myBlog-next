@@ -10,8 +10,15 @@ import {
   getArticleById,
   updateArticle,
 } from "@/lib/article";
+import {
+  clearAllArticles,
+  indexArticle,
+  reindexAllArticles,
+  reindexArticleById,
+  unindexArticle,
+  type IndexJobResult,
+} from "@/lib/ai/admin-index";
 import type { RowDataPacket } from "mysql2";
-const { chunkMarkdown, embedTexts, upsertChunks } = await import("@/lib/ai");
 
 function slugify(text: string) {
   return text
@@ -124,30 +131,16 @@ export async function createArticleAction(
   revalidatePath("/admin");
   revalidatePath("/admin/articles");
 
+  // 同步向量索引；失败不阻塞发布
   try {
-  
-  const chunks = chunkMarkdown(fields.content);
-  if (chunks.length > 0) {
-    const vectors = await embedTexts(chunks.map((c) => c.text));
-    await upsertChunks(
-      chunks.map((chunk, i) => ({
-        id: `${id}-${i}`,
-        vector: vectors[i],
-        payload: {
-          sourceType: "article" as const,
-          sourceId: id,
-          title: fields.title,
-          chunkIndex: i,
-          text: chunk.text,
-          url: `/article/${id}`,
-        },
-      })),
-    );
+    await indexArticle({
+      id,
+      title: fields.title,
+      content: fields.content,
+    });
+  } catch (error) {
+    console.error("[index] 索引新文章失败:", error);
   }
-} catch (error) {
-  console.error("[index] 索引新文章失败:", error);
-  // 不阻塞发布
-}
 
   redirect(`/admin/articles`);
 }
@@ -190,6 +183,22 @@ export async function updateArticleAction(
   revalidatePath("/admin");
   revalidatePath("/admin/articles");
 
+  // 内容或标题变了，重建该篇向量；失败不阻塞保存
+  try {
+    if (
+      existing.content !== fields.content ||
+      existing.title !== fields.title
+    ) {
+      await indexArticle({
+        id,
+        title: fields.title,
+        content: fields.content,
+      });
+    }
+  } catch (error) {
+    console.error("[index] 更新文章索引失败:", error);
+  }
+
   return { ok: true, message: "已保存" };
 }
 
@@ -202,10 +211,68 @@ export async function deleteArticleAction(formData: FormData) {
 
   await deleteArticle(id);
 
+  // 同步清掉向量；失败不阻塞删除
+  try {
+    await unindexArticle(id);
+  } catch (error) {
+    console.error("[index] 删除文章向量失败:", error);
+  }
+
   revalidatePath("/");
   revalidatePath("/archive");
   revalidatePath(`/category/${existing.categorySlug}`);
   revalidatePath(`/article/${id}`);
   revalidatePath("/admin");
   revalidatePath("/admin/articles");
+}
+
+// ---------- 向量索引面板 ----------
+
+export interface IndexActionState {
+  ok?: boolean;
+  message?: string;
+  detail?: IndexJobResult;
+  ts?: number;
+}
+
+export async function reindexArticleAction(
+  _prev: IndexActionState,
+  formData: FormData,
+): Promise<IndexActionState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { ok: false, message: "缺少文章 id", ts: Date.now() };
+  const result = await reindexArticleById(id);
+  return {
+    ok: result.ok,
+    message: result.message,
+    ts: Date.now(),
+  };
+}
+
+export async function reindexAllAction(
+  _prev: IndexActionState,
+  _formData: FormData,
+): Promise<IndexActionState> {
+  await requireAdmin();
+  const result = await reindexAllArticles();
+  return {
+    ok: result.ok,
+    message: result.message,
+    detail: result,
+    ts: Date.now(),
+  };
+}
+
+export async function clearIndexAction(
+  _prev: IndexActionState,
+  _formData: FormData,
+): Promise<IndexActionState> {
+  await requireAdmin();
+  const result = await clearAllArticles();
+  return {
+    ok: result.ok,
+    message: result.message,
+    ts: Date.now(),
+  };
 }

@@ -81,6 +81,58 @@ export async function deleteBySource(sourceType: string, sourceId: string) {
   });
 }
 
+export interface CollectionStats {
+  collection: string;
+  pointsCount: number;
+  indexedVectorsCount: number;
+  status: string;
+  reachable: boolean;
+  error?: string;
+}
+
+/**
+ * 拿向量库当前状态。Qdrant 不可达时返回 reachable: false，不抛错，方便后台展示。
+ */
+export async function getCollectionStats(): Promise<CollectionStats> {
+  try {
+    await ensureCollection();
+    const info = await qdrant.getCollection(COLLECTION);
+    return {
+      collection: COLLECTION,
+      pointsCount: Number(info.points_count ?? 0),
+      indexedVectorsCount: Number(info.indexed_vectors_count ?? 0),
+      status: String(info.status ?? "unknown"),
+      reachable: true,
+    };
+  } catch (err) {
+    return {
+      collection: COLLECTION,
+      pointsCount: 0,
+      indexedVectorsCount: 0,
+      status: "unreachable",
+      reachable: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * 清空整个集合（重建并保留 schema）。慎用。
+ */
+export async function recreateCollection() {
+  const collections = await qdrant.getCollections();
+  const exists = collections.collections.some((c) => c.name === COLLECTION);
+  if (exists) {
+    await qdrant.deleteCollection(COLLECTION);
+  }
+  await qdrant.createCollection(COLLECTION, {
+    vectors: {
+      size: EMBEDDING_DIM,
+      distance: "Cosine",
+    },
+  });
+}
+
 /**
  * 把 (sourceType, sourceId, chunkIndex) 映射成确定性 UUID
  * Qdrant 的 point id 必须是无符号整数或 UUID

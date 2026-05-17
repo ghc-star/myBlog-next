@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { getArticles } from "@/lib/article";
+import { getIndexStats } from "@/lib/ai/admin-index";
 import DeleteArticleButton from "./_components/DeleteArticleButton";
+import ReindexArticleButton from "./_components/ReindexArticleButton";
+import IndexPanel from "./_components/IndexPanel";
 import ArticleSearchInput from "./_components/ArticleSearchInput";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +15,10 @@ export default async function AdminArticlesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const all = await getArticles();
+  const [all, indexStats] = await Promise.all([
+    getArticles(),
+    getIndexStats(),
+  ]);
   const keyword = (q ?? "").trim().toLowerCase();
   const articles = keyword
     ? all.filter((a) => {
@@ -32,6 +38,8 @@ export default async function AdminArticlesPage({
 
   return (
     <div className="space-y-4">
+      <IndexPanel stats={indexStats} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-(--text-title)">
@@ -120,6 +128,7 @@ export default async function AdminArticlesPage({
                       >
                         预览
                       </Link>
+                      <ReindexArticleButton id={article.id} />
                       <Link
                         href={`/admin/articles/${article.id}/edit`}
                         className="rounded-md border border-(--border-normal) bg-(--card-bg) px-2.5 py-1 text-xs text-(--text-strong) transition hover:border-(--theme-accent) hover:text-(--theme-accent)"

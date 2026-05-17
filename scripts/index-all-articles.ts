@@ -1,9 +1,10 @@
 import { config } from "dotenv";
 import mysql from "mysql2/promise";
 import { QdrantClient } from "@qdrant/js-client-rest";
-import crypto from "node:crypto";
 
 config({ path: ".env.development.local" });
+
+import { makePointId } from "../src/lib/ai/vector";
 
 const EMBEDDING_BASE_URL = process.env.EMBEDDING_BASE_URL!;
 const EMBEDDING_API_KEY = process.env.EMBEDDING_API_KEY!;
@@ -59,22 +60,6 @@ function chunkMarkdown(content: string, maxLen = 800): string[] {
   return chunks;
 }
 
-function makePointId(articleId: string, chunkIndex: number): string {
-  const hash = crypto
-    .createHash("sha256")
-    .update(`article:${articleId}:${chunkIndex}`)
-    .digest("hex");
-
-  // 拼成 UUID v4 格式（虽然不是真随机，但格式合规，Qdrant 接受）
-  return [
-    hash.slice(0, 8),
-    hash.slice(8, 12),
-    "4" + hash.slice(13, 16),
-    ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) +
-      hash.slice(17, 20),
-    hash.slice(20, 32),
-  ].join("-");
-}
 
 // --- Main ---
 async function main() {
@@ -107,7 +92,8 @@ async function main() {
   }
 
   // 拉所有文章
-  const [rows] = await db.query<any[]>(
+  type ArticleRow = { id: string; title: string; content: string };
+  const [rows] = await db.query<(ArticleRow & mysql.RowDataPacket)[]>(
     "SELECT id, title, content FROM articles ORDER BY published_at DESC",
   );
   console.log(`共 ${rows.length} 篇文章`);
@@ -130,7 +116,7 @@ async function main() {
       const vectors = await embedBatch(batch);
 
       const points = batch.map((text, k) => ({
-        id: makePointId(article.id, j + k),
+        id: makePointId("article", article.id, j + k),
         vector: vectors[k],
         payload: {
           sourceType: "article",

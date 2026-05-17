@@ -7,7 +7,10 @@ export {
   searchChunks,
   deleteBySource,
   makePointId,
+  getCollectionStats,
+  recreateCollection,
   type ChunkPayload,
+  type CollectionStats,
 } from "./vector";
 export { chunkMarkdown, type Chunk } from "./chunk";
 export { blogTools } from "./tools";

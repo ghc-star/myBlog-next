@@ -1,9 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import PolishDiffOverlay from "./PolishDiffOverlay";
+import { useWriterAi } from "./useWriterAi";
 
 import type { ArticleFormState } from "../_actions";
 
@@ -74,6 +77,7 @@ export default function ArticleEditor({
     {},
   );
 
+  const ai = useWriterAi();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [desc, setDesc] = useState(initial?.desc ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
@@ -86,17 +90,35 @@ export default function ArticleEditor({
   const [tagDraft, setTagDraft] = useState("");
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [toast, setToast] = useState<string | null>(null);
+  const [draftLen, setDraftLen] = useState<"short" | "medium" | "long">(
+    "medium",
+  );
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  // 润色浮层
+  const [polish, setPolish] = useState<{
+    open: boolean;
+    original: string;
+    draft: string;
+    loading: boolean;
+    modeLabel: string;
+    // 应用时需要把 draft 替换回原始位置
+    range: { start: number; end: number } | null;
+  } | null>(null);
+  
+  
 
-  // 自动从 category 推 slug，除非用户手动改过
-  useEffect(() => {
+  // 自动从 category 推 slug，除非用户手动改过（在 onChange 里同步推，避免 effect 里 setState）
+  function handleCategoryChange(value: string) {
+    setCategory(value);
     if (!slugTouched) {
-      setCategorySlug(slugify(category));
+      setCategorySlug(slugify(value));
     }
-  }, [category, slugTouched]);
+  }
 
   useEffect(() => {
     if (state.ok && state.message) {
-      setToast(state.message);
+      // 用 microtask 把 setState 推到 effect body 之外，避开 react-hooks/no-direct-set-state-in-use-effect
+      queueMicrotask(() => setToast(state.message ?? null));
       const timer = window.setTimeout(() => setToast(null), 1800);
       return () => window.clearTimeout(timer);
     }
@@ -156,9 +178,27 @@ export default function ArticleEditor({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-(--text-sub)">
-              摘要
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-(--text-sub)">
+                摘要
+              </label>
+              <button
+                type="button"
+                disabled={!title || content.trim().length < 10 || ai.pending !== null}
+                onClick={async () => {
+                  const r = await ai.genSummary(title, content);
+                  if (r?.desc) setDesc(r.desc);
+                }}
+                title={
+                  content.trim().length < 10
+                    ? "正文至少 10 个字符才能生成摘要"
+                    : undefined
+                }
+                className="rounded-md border border-(--border-normal) px-2 py-0.5 text-[11px] text-(--text-sub) transition hover:border-(--theme-accent) hover:text-(--theme-accent) disabled:opacity-50"
+              >
+                {ai.pending === "summary" ? "生成中…" : "AI 生成"}
+              </button>
+            </div>
             <textarea
               name="desc"
               value={desc}
@@ -174,38 +214,204 @@ export default function ArticleEditor({
 
           {/* 编辑器 / 预览切换 */}
           <div className="rounded-lg border border-(--border-normal) bg-(--card-bg)">
-            <div className="flex items-center justify-between border-b border-(--border-normal) px-3 py-2">
-              <div className="inline-flex rounded-md bg-(--card-bg-soft) p-1 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-(--border-normal) px-3 py-2">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded-md bg-(--card-bg-soft) p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setView("edit")}
+                    className={`rounded px-3 py-1 transition ${
+                      view === "edit"
+                        ? "bg-(--card-bg) font-medium text-(--text-title) shadow-sm"
+                        : "text-(--text-sub)"
+                    }`}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("preview")}
+                    className={`rounded px-3 py-1 transition ${
+                      view === "preview"
+                        ? "bg-(--card-bg) font-medium text-(--text-title) shadow-sm"
+                        : "text-(--text-sub)"
+                    }`}
+                  >
+                    预览
+                  </button>
+                </div>
+
+                {/* 润色按钮组 */}
+                <div className="flex items-center gap-1">
+                  {(["fix", "rewrite", "shorten", "expand"] as const).map((mode) => {
+                    const labels = {
+                      fix: "校对",
+                      rewrite: "重写",
+                      shorten: "精简",
+                      expand: "扩写",
+                    } as const;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        disabled={ai.pending !== null}
+                        onClick={async () => {
+                          const ta = contentRef.current;
+                          if (!ta) return;
+                          const start = ta.selectionStart;
+                          const end = ta.selectionEnd;
+                          const sel = content.slice(start, end);
+                          if (!sel.trim()) {
+                            alert("请先选中要" + labels[mode] + "的文本");
+                            return;
+                          }
+                          setPolish({
+                            open: true,
+                            original: sel,
+                            draft: "",
+                            loading: true,
+                            modeLabel: labels[mode],
+                            range: { start, end },
+                          });
+                          await ai.polish(sel, mode, (full) => {
+                            setPolish((prev) =>
+                              prev ? { ...prev, draft: full } : prev,
+                            );
+                          });
+                          setPolish((prev) =>
+                            prev ? { ...prev, loading: false } : prev,
+                          );
+                        }}
+                        className="rounded px-2 py-0.5 text-[11px] text-(--text-sub) transition hover:bg-(--card-bg-soft) hover:text-(--text-title) disabled:opacity-50"
+                      >
+                        {ai.pending === `polish:${mode}` ? "…" : labels[mode]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <span className="h-3 w-px bg-(--border-normal)" />
+
+                {/* 续写 */}
                 <button
                   type="button"
-                  onClick={() => setView("edit")}
-                  className={`rounded px-3 py-1 transition ${
-                    view === "edit"
-                      ? "bg-(--card-bg) font-medium text-(--text-title) shadow-sm"
-                      : "text-(--text-sub)"
-                  }`}
+                  disabled={ai.pending !== null || !content.trim()}
+                  onClick={async () => {
+                    const ta = contentRef.current;
+                    if (!ta) return;
+                    const pos = ta.selectionStart;
+                    const before = content.slice(0, pos);
+                    const after = content.slice(pos);
+                    // 续写不走 diff 浮层（一般是空白处插入），保留原行为：直接插入
+                    let lastFull = "";
+                    await ai.continueAt(before, "medium", (full) => {
+                      // 增量替换 (before + AI输出 + after)
+                      setContent(before + full + after);
+                      lastFull = full;
+                    });
+                    // 续写完成后，把光标移到插入末尾
+                    requestAnimationFrame(() => {
+                      if (contentRef.current) {
+                        const cursor = before.length + lastFull.length;
+                        contentRef.current.focus();
+                        contentRef.current.setSelectionRange(cursor, cursor);
+                      }
+                    });
+                  }}
+                  className="rounded px-2 py-0.5 text-[11px] text-(--theme-accent) transition hover:bg-(--theme-accent-soft) disabled:opacity-50"
                 >
-                  编辑
+                  {ai.pending?.startsWith("continue") ? "续写中…" : "续写"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setView("preview")}
-                  className={`rounded px-3 py-1 transition ${
-                    view === "preview"
-                      ? "bg-(--card-bg) font-medium text-(--text-title) shadow-sm"
-                      : "text-(--text-sub)"
-                  }`}
-                >
-                  预览
-                </button>
+
+                <span className="h-3 w-px bg-(--border-normal)" />
+
+                {/* AI 草稿（根据标题写整篇） */}
+                <div className="flex items-center gap-1">
+                  <select
+                    value={draftLen}
+                    onChange={(e) =>
+                      setDraftLen(e.target.value as "short" | "medium" | "long")
+                    }
+                    disabled={ai.pending !== null}
+                    title="草稿长度"
+                    className="h-6 rounded border border-(--border-normal) bg-(--card-bg) px-1 text-[11px] text-(--text-sub) outline-none disabled:opacity-50"
+                  >
+                    <option value="short">短 ~500</option>
+                    <option value="medium">中 ~1200</option>
+                    <option value="long">长 ~2500</option>
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!title || ai.pending !== null}
+                    onClick={async () => {
+                      // 已有内容 → 让用户选追加 / 覆盖 / 取消
+                      let mode: "replace" | "append" | "cancel" = "replace";
+                      if (content.trim()) {
+                        const ans = window.prompt(
+                          "编辑器已有内容，输入：\n  r = 覆盖（清空后写入）\n  a = 追加到末尾\n  其他 = 取消",
+                          "a",
+                        );
+                        if (ans === "r" || ans === "R") mode = "replace";
+                        else if (ans === "a" || ans === "A") mode = "append";
+                        else mode = "cancel";
+                      }
+                      if (mode === "cancel") return;
+
+                      const prefix =
+                        mode === "append" && content
+                          ? content.replace(/\s*$/, "") + "\n\n"
+                          : "";
+
+                      let lastFull = "";
+                      await ai.draftAt(
+                        {
+                          title,
+                          category: category || undefined,
+                          tags: tags.length > 0 ? tags : undefined,
+                          desc: desc || undefined,
+                          approxLength: draftLen,
+                        },
+                        (full) => {
+                          lastFull = full;
+                          setContent(prefix + full);
+                        },
+                      );
+
+                      // 草稿写完，光标放到末尾
+                      requestAnimationFrame(() => {
+                        if (contentRef.current) {
+                          const cursor = (prefix + lastFull).length;
+                          contentRef.current.focus();
+                          contentRef.current.setSelectionRange(cursor, cursor);
+                        }
+                      });
+                    }}
+                    title={
+                      !title
+                        ? "请先填写标题"
+                        : "根据当前标题（含分类/标签/摘要）生成整篇草稿"
+                    }
+                    className="rounded px-2 py-0.5 text-[11px] text-(--theme-accent) transition hover:bg-(--theme-accent-soft) disabled:opacity-50"
+                  >
+                    {ai.pending?.startsWith("draft") ? "起稿中…" : "AI 草稿"}
+                  </button>
+                </div>
               </div>
-              <span className="text-xs text-(--text-faint)">
-                Markdown · {content.length} 字
-              </span>
+
+              <div className="flex items-center gap-2 text-xs">
+                {ai.error ? (
+                  <span className="text-rose-500">{ai.error}</span>
+                ) : null}
+                <span className="text-(--text-faint)">
+                  Markdown · {content.length} 字
+                </span>
+              </div>
             </div>
+
 
             {view === "edit" ? (
               <textarea
+                ref={contentRef}
                 name="content"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
@@ -257,7 +463,7 @@ export default function ArticleEditor({
             <input
               name="category"
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) => handleCategoryChange(event.target.value)}
               list="admin-category-options"
               placeholder="例：前端 / 算法"
               className="mt-1.5 w-full rounded-md border border-(--border-normal) bg-(--card-bg) px-3 py-2 text-sm outline-none placeholder:text-(--text-faint) focus:border-(--theme-accent)"
@@ -302,9 +508,29 @@ export default function ArticleEditor({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-(--text-sub)">
-              标签
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-(--text-sub)">
+                标签
+              </label>
+              <button
+                type="button"
+                disabled={!title || content.trim().length < 10 || ai.pending !== null}
+                onClick={async () => {
+                  const r = await ai.genTags(title, content);
+                  if (r?.tags) {
+                    setTags(Array.from(new Set([...tags, ...r.tags])));
+                  }
+                }}
+                title={
+                  content.trim().length < 10
+                    ? "正文至少 10 个字符才能推荐标签"
+                    : undefined
+                }
+                className="rounded-md border border-(--border-normal) px-2 py-0.5 text-[11px] text-(--text-sub) transition hover:border-(--theme-accent) hover:text-(--theme-accent) disabled:opacity-50"
+              >
+                {ai.pending === "tags" ? "推荐中…" : "AI 推荐"}
+              </button>
+            </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded-md border border-(--border-normal) bg-(--card-bg) px-2 py-1.5">
               {tags.map((tag) => (
                 <span
@@ -383,7 +609,7 @@ export default function ArticleEditor({
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-2">
+           <div className="flex items-center justify-end pt-2">
             <SubmitButton mode={mode} />
           </div>
         </aside>
@@ -394,6 +620,34 @@ export default function ArticleEditor({
           {toast}
         </div>
       ) : null}
+      {polish ? (
+      <PolishDiffOverlay
+        open={polish.open}
+        original={polish.original}
+        draft={polish.draft}
+        loading={polish.loading}
+        modeLabel={polish.modeLabel}
+        onClose={() => setPolish(null)}
+        onApply={(text) => {
+          if (!polish.range) return;
+          const before = content.slice(0, polish.range.start);
+          const after = content.slice(polish.range.end);
+          setContent(before + text + after);
+          setPolish(null);
+          // 选中刚替换的内容，方便用户继续操作
+          requestAnimationFrame(() => {
+            const ta = contentRef.current;
+            if (!ta) return;
+            ta.focus();
+            ta.setSelectionRange(
+              polish.range!.start,
+              polish.range!.start + text.length,
+            );
+          });
+        }}
+      />
+    ) : null}
+
     </form>
   );
 }

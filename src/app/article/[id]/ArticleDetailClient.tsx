@@ -17,14 +17,253 @@ function slugify(text: string) {
     .replace(/[^\w\u4e00-\u9fa5\s-]/g, "")
     .replace(/\s+/g, "-");
 }
+
 function stripLeadingMarkdownH1(content: string) {
   return content.replace(/^\s*#\s+.+?(?:\r?\n){1,2}/, "");
 }
+
 const headingClasses = {
   1: "mb-6 mt-2 scroll-mt-24 text-3xl font-bold leading-tight text-[var(--text-title)]",
   2: "mb-4 mt-8 scroll-mt-24 border-b border-[var(--border-normal)] pb-2 text-2xl font-semibold leading-tight text-[var(--text-title)]",
   3: "mb-3 mt-6 scroll-mt-24 text-xl font-semibold leading-snug text-[var(--text-title)]",
 };
+
+function getNodeText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(getNodeText).join("");
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return getNodeText(node.props.children);
+  }
+
+  return "";
+}
+
+function renderHeading(level: 1 | 2 | 3, children?: React.ReactNode) {
+  const text = getNodeText(children).trim();
+  const headingId = slugify(text) || "heading";
+  const Tag = `h${level}` as "h1" | "h2" | "h3";
+
+  return (
+    <Tag id={headingId} className={headingClasses[level]}>
+      {children}
+    </Tag>
+  );
+}
+
+function HeadingOne({ children }: { children?: React.ReactNode }) {
+  return renderHeading(1, children);
+}
+function HeadingTwo({ children }: { children?: React.ReactNode }) {
+  return renderHeading(2, children);
+}
+function HeadingThree({ children }: { children?: React.ReactNode }) {
+  return renderHeading(3, children);
+}
+
+function CodeBlock({ children }: { children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+
+  let language = "";
+  let codeText = "";
+
+  React.Children.forEach(children, (child) => {
+    if (
+      React.isValidElement<{ className?: string; children?: React.ReactNode }>(
+        child,
+      )
+    ) {
+      const className = child.props.className ?? "";
+      language = className.replace("language-", "");
+      codeText = getNodeText(child.props.children);
+    }
+  });
+
+  if (!codeText) {
+    codeText = getNodeText(children);
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(codeText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <div className="group relative mb-6 overflow-hidden rounded-2xl border border-[var(--border-normal)] bg-[#fafbfc]">
+      <div className="flex items-center justify-between border-b border-[var(--border-normal)] bg-[#f4f5f7] px-4 py-2">
+        <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
+          {language || "code"}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="rounded-md border border-[var(--border-normal)] bg-white px-2.5 py-1 text-xs text-[var(--text-sub)] transition hover:border-[var(--theme-accent)] hover:text-[var(--text-title)]"
+        >
+          {copied ? "已复制" : "Copy"}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language || "text"}
+        style={oneLight}
+        showLineNumbers
+        lineNumberStyle={{
+          minWidth: "2.5em",
+          paddingRight: "1em",
+          color: "#c0c4cc",
+          fontSize: "13px",
+          userSelect: "none",
+        }}
+        customStyle={{
+          margin: 0,
+          padding: "1rem 1.25rem",
+          background: "transparent",
+          fontSize: "13px",
+          lineHeight: "1.7",
+          overflow: "auto",
+        }}
+        codeTagProps={{
+          style: {
+            fontFamily:
+              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          },
+        }}
+      >
+        {codeText.replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
+// 把 ReactMarkdown 的 components 配置抽到模块顶层，
+// 这样组件类型在每次渲染中都是同一个引用，
+// SyntaxHighlighter 不会因为父组件 state 变化被卸载重建。
+const markdownComponents: Components = {
+  h1: HeadingOne,
+  h2: HeadingTwo,
+  h3: HeadingThree,
+  h4: ({ children }) => (
+    <h4 className="mb-3 mt-5 text-lg font-semibold leading-snug text-[var(--text-title)]">
+      {children}
+    </h4>
+  ),
+  p: ({ children }) => (
+    <p className="mb-4 leading-8 text-[var(--text-strong)]">{children}</p>
+  ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target={href?.startsWith("http") ? "_blank" : undefined}
+      rel={href?.startsWith("http") ? "noreferrer noopener" : undefined}
+      className="font-medium text-[var(--theme-accent)] underline decoration-[var(--theme-accent-border)] underline-offset-2 transition hover:decoration-[var(--theme-accent)]"
+    >
+      {children}
+    </a>
+  ),
+  img: ({ src, alt }) => (
+    <span className="my-6 block text-center">
+      <img
+        src={src}
+        alt={alt ?? ""}
+        loading="lazy"
+        className="inline-block max-w-full rounded-xl shadow-[var(--shadow-card)]"
+      />
+      {alt ? (
+        <span className="mt-2 block text-xs text-[var(--text-faint)]">
+          {alt}
+        </span>
+      ) : null}
+    </span>
+  ),
+  ul: ({ children }) => (
+    <ul className="mb-4 list-disc pl-6 text-[var(--text-strong)]">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="mb-4 list-decimal pl-6 text-[var(--text-strong)]">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => (
+    <li className="mb-2 leading-8 marker:text-[var(--theme-accent)]">
+      {children}
+    </li>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold text-[var(--text-title)]">
+      {children}
+    </strong>
+  ),
+  del: ({ children }) => (
+    <del className="text-[var(--text-faint)] line-through">{children}</del>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="mb-6 rounded-r-2xl border-l-4 border-[var(--theme-accent)] bg-[var(--card-bg-soft)] px-5 py-3 text-[var(--text-strong)] [&>p]:mb-0 [&>p:last-child]:mb-0">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-8 border-[var(--border-normal)]" />,
+  table: ({ children }) => (
+    <div className="mb-6 overflow-x-auto rounded-xl border border-[var(--border-normal)]">
+      <table className="w-full border-collapse text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-[var(--card-bg-soft)] text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-sub)]">
+      {children}
+    </thead>
+  ),
+  th: ({ children }) => (
+    <th className="border-b border-[var(--border-normal)] px-4 py-2.5 font-semibold">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border-b border-[var(--border-normal)] px-4 py-2.5 text-[var(--text-strong)]">
+      {children}
+    </td>
+  ),
+  tr: ({ children }) => (
+    <tr className="transition even:bg-[var(--card-bg-soft)]/50 hover:bg-[var(--card-bg-soft)]">
+      {children}
+    </tr>
+  ),
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+  code: ({ children, className }) => {
+    if (className) {
+      return <code className={className}>{children}</code>;
+    }
+    return (
+      <code className="rounded-md bg-[var(--card-bg-soft)] px-1.5 py-0.5 text-[13px] font-medium text-[var(--text-title)]">
+        {children}
+      </code>
+    );
+  },
+};
+
+const remarkPlugins = [remarkGfm];
+
+// 用 memo 包住 markdown 主体：只要内容字符串不变就不重新渲染，
+// 切换 activeId、滚动联动等状态变化都不会再触发 Prism 重新解析。
+const ArticleMarkdown = React.memo(function ArticleMarkdown({
+  content,
+}: {
+  content: string;
+}) {
+  return (
+    <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
+      {content}
+    </ReactMarkdown>
+  );
+});
+
 export default function ArticleDetailClient({
   article,
 }: {
@@ -42,10 +281,21 @@ export default function ArticleDetailClient({
     return stripLeadingMarkdownH1(article.content);
   }, [article]);
 
-  function normalizeHeadingIds(container: HTMLElement) {
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (!articleRef.current) return;
+
+    // 标题去重，确保同名标题也能跳转
     const used = new Map<string, number>();
     const headings = Array.from(
-      container.querySelectorAll<HTMLElement>("h1,h2,h3"),
+      articleRef.current.querySelectorAll<HTMLElement>("h1,h2,h3"),
     );
 
     headings.forEach((heading) => {
@@ -58,240 +308,7 @@ export default function ArticleDetailClient({
       heading.id = nextCount === 1 ? baseId : `${baseId}-${nextCount}`;
     });
 
-    return headings;
-  }
-  function getNodeText(node: React.ReactNode): string {
-    if (typeof node === "string" || typeof node === "number") {
-      return String(node);
-    }
-
-    if (Array.isArray(node)) {
-      return node.map(getNodeText).join("");
-    }
-
-    if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
-      return getNodeText(node.props.children);
-    }
-
-    return "";
-  }
-
-  function renderHeading(level: 1 | 2 | 3, children?: React.ReactNode) {
-    const text = getNodeText(children).trim();
-    const headingId = slugify(text) || "heading";
-    const Tag = `h${level}` as "h1" | "h2" | "h3";
-
-    return (
-      <Tag id={headingId} className={headingClasses[level]}>
-        {children}
-      </Tag>
-    );
-  }
-
-  function HeadingOne({ children }: { children?: React.ReactNode }) {
-    return renderHeading(1, children);
-  }
-  function HeadingTwo({ children }: { children?: React.ReactNode }) {
-    return renderHeading(2, children);
-  }
-
-  function HeadingThree({ children }: { children?: React.ReactNode }) {
-    return renderHeading(3, children);
-  }
-
-  useLayoutEffect(() => {
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-
-    window.scrollTo(0, 0);
-  }, []);
-
-  function CodeBlock({ children }: { children: React.ReactNode }) {
-    const [copied, setCopied] = useState(false);
-
-    // 从 children 中提取语言和代码文本
-    let language = "";
-    let codeText = "";
-
-    React.Children.forEach(children, (child) => {
-      if (React.isValidElement<{ className?: string; children?: React.ReactNode }>(child)) {
-        const className = child.props.className ?? "";
-        language = className.replace("language-", "");
-        codeText = getNodeText(child.props.children);
-      }
-    });
-
-    if (!codeText) {
-      codeText = getNodeText(children);
-    }
-
-    function handleCopy() {
-      navigator.clipboard.writeText(codeText).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    }
-
-    return (
-      <div className="group relative mb-6 overflow-hidden rounded-2xl border border-[var(--border-normal)] bg-[#fafbfc]">
-        <div className="flex items-center justify-between border-b border-[var(--border-normal)] bg-[#f4f5f7] px-4 py-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-faint)]">
-            {language || "code"}
-          </span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="rounded-md border border-[var(--border-normal)] bg-white px-2.5 py-1 text-xs text-[var(--text-sub)] transition hover:border-[var(--theme-accent)] hover:text-[var(--text-title)]"
-          >
-            {copied ? "已复制" : "Copy"}
-          </button>
-        </div>
-        <SyntaxHighlighter
-          language={language || "text"}
-          style={oneLight}
-          showLineNumbers
-          lineNumberStyle={{
-            minWidth: "2.5em",
-            paddingRight: "1em",
-            color: "#c0c4cc",
-            fontSize: "13px",
-            userSelect: "none",
-          }}
-          customStyle={{
-            margin: 0,
-            padding: "1rem 1.25rem",
-            background: "transparent",
-            fontSize: "13px",
-            lineHeight: "1.7",
-            overflow: "auto",
-          }}
-          codeTagProps={{
-            style: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
-          }}
-        >
-          {codeText.replace(/\n$/, "")}
-        </SyntaxHighlighter>
-      </div>
-    );
-  }
-
-  const components = useMemo<Components>(() => {
-    return {
-      h1: HeadingOne,
-      h2: HeadingTwo,
-      h3: HeadingThree,
-      h4: ({ children }) => (
-        <h4 className="mb-3 mt-5 text-lg font-semibold leading-snug text-[var(--text-title)]">
-          {children}
-        </h4>
-      ),
-      p: ({ children }) => (
-        <p className="mb-4 leading-8 text-[var(--text-strong)]">{children}</p>
-      ),
-      a: ({ href, children }) => (
-        <a
-          href={href}
-          target={href?.startsWith("http") ? "_blank" : undefined}
-          rel={href?.startsWith("http") ? "noreferrer noopener" : undefined}
-          className="font-medium text-[var(--theme-accent)] underline decoration-[var(--theme-accent-border)] underline-offset-2 transition hover:decoration-[var(--theme-accent)]"
-        >
-          {children}
-        </a>
-      ),
-      img: ({ src, alt }) => (
-        <span className="my-6 block text-center">
-          <img
-            src={src}
-            alt={alt ?? ""}
-            loading="lazy"
-            className="inline-block max-w-full rounded-xl shadow-[var(--shadow-card)]"
-          />
-          {alt ? (
-            <span className="mt-2 block text-xs text-[var(--text-faint)]">
-              {alt}
-            </span>
-          ) : null}
-        </span>
-      ),
-      ul: ({ children }) => (
-        <ul className="mb-4 list-disc pl-6 text-[var(--text-strong)]">
-          {children}
-        </ul>
-      ),
-      ol: ({ children }) => (
-        <ol className="mb-4 list-decimal pl-6 text-[var(--text-strong)]">
-          {children}
-        </ol>
-      ),
-      li: ({ children }) => (
-        <li className="mb-2 leading-8 marker:text-[var(--theme-accent)]">
-          {children}
-        </li>
-      ),
-      strong: ({ children }) => (
-        <strong className="font-semibold text-[var(--text-title)]">
-          {children}
-        </strong>
-      ),
-      del: ({ children }) => (
-        <del className="text-[var(--text-faint)] line-through">{children}</del>
-      ),
-      blockquote: ({ children }) => (
-        <blockquote className="mb-6 rounded-r-2xl border-l-4 border-[var(--theme-accent)] bg-[var(--card-bg-soft)] px-5 py-3 text-[var(--text-strong)] [&>p]:mb-0 [&>p:last-child]:mb-0">
-          {children}
-        </blockquote>
-      ),
-      hr: () => <hr className="my-8 border-[var(--border-normal)]" />,
-      table: ({ children }) => (
-        <div className="mb-6 overflow-x-auto rounded-xl border border-[var(--border-normal)]">
-          <table className="w-full border-collapse text-sm">
-            {children}
-          </table>
-        </div>
-      ),
-      thead: ({ children }) => (
-        <thead className="bg-[var(--card-bg-soft)] text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-sub)]">
-          {children}
-        </thead>
-      ),
-      th: ({ children }) => (
-        <th className="border-b border-[var(--border-normal)] px-4 py-2.5 font-semibold">
-          {children}
-        </th>
-      ),
-      td: ({ children }) => (
-        <td className="border-b border-[var(--border-normal)] px-4 py-2.5 text-[var(--text-strong)]">
-          {children}
-        </td>
-      ),
-      tr: ({ children }) => (
-        <tr className="transition even:bg-[var(--card-bg-soft)]/50 hover:bg-[var(--card-bg-soft)]">
-          {children}
-        </tr>
-      ),
-      pre: ({ children }) => {
-        return <CodeBlock>{children}</CodeBlock>;
-      },
-      code: ({ children, className }) => {
-        // 代码块内的 code 由 CodeBlock 处理，这里只处理行内 code
-        if (className) {
-          return <code className={className}>{children}</code>;
-        }
-        return (
-          <code className="rounded-md bg-[var(--card-bg-soft)] px-1.5 py-0.5 text-[13px] font-medium text-[var(--text-title)]">
-            {children}
-          </code>
-        );
-      },
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!articleRef.current) return;
-
-    const headings = normalizeHeadingIds(articleRef.current);
-    const tocData: TocItem[] = Array.from(headings).map((heading) => ({
+    const tocData: TocItem[] = headings.map((heading) => ({
       id: heading.id,
       text: heading.textContent || "",
       level: Number(heading.tagName.charAt(1)),
@@ -299,7 +316,7 @@ export default function ArticleDetailClient({
 
     setToc(tocData);
     if (tocData.length > 0) {
-      setActiveId(tocData[0].id);
+      setActiveId((prev) => prev || tocData[0].id);
     }
   }, [renderedContent]);
 
@@ -324,49 +341,55 @@ export default function ArticleDetailClient({
       }, 180);
     };
 
+    let pending = false;
     const updateActiveHeading = () => {
-      if (!articleRef.current) return;
+      if (pending) return;
+      pending = true;
+      window.requestAnimationFrame(() => {
+        pending = false;
+        if (!articleRef.current) return;
 
-      if (isTocNavigatingRef.current) {
-        const targetId = tocTargetIdRef.current;
-        const targetElement = targetId
-          ? document.getElementById(targetId)
-          : null;
+        if (isTocNavigatingRef.current) {
+          const targetId = tocTargetIdRef.current;
+          const targetElement = targetId
+            ? document.getElementById(targetId)
+            : null;
 
-        if (!targetElement) {
-          releaseTocNavigation();
-        } else {
-          const targetOffset = 120;
-          const distanceToTarget = Math.abs(
-            targetElement.getBoundingClientRect().top - targetOffset,
-          );
+          if (!targetElement) {
+            releaseTocNavigation();
+          } else {
+            const targetOffset = 120;
+            const distanceToTarget = Math.abs(
+              targetElement.getBoundingClientRect().top - targetOffset,
+            );
 
-          if (distanceToTarget > 12) {
-            scheduleTocNavigationRelease();
-            return;
+            if (distanceToTarget > 12) {
+              scheduleTocNavigationRelease();
+              return;
+            }
+
+            releaseTocNavigation();
           }
-
-          releaseTocNavigation();
         }
-      }
 
-      const headings = Array.from(
-        articleRef.current.querySelectorAll<HTMLElement>("h1,h2,h3"),
-      );
+        const headings = Array.from(
+          articleRef.current.querySelectorAll<HTMLElement>("h1,h2,h3"),
+        );
 
-      if (!headings.length) return;
+        if (!headings.length) return;
 
-      const offset = 120;
-      const current = [...headings]
-        .reverse()
-        .find((heading) => heading.getBoundingClientRect().top <= offset);
+        const offset = 120;
+        const current = [...headings]
+          .reverse()
+          .find((heading) => heading.getBoundingClientRect().top <= offset);
 
-      const nextId = current?.id ?? headings[0].id;
-      setActiveId((prev) => (prev === nextId ? prev : nextId));
+        const nextId = current?.id ?? headings[0].id;
+        setActiveId((prev) => (prev === nextId ? prev : nextId));
+      });
     };
 
     updateActiveHeading();
-    window.addEventListener("scroll", updateActiveHeading);
+    window.addEventListener("scroll", updateActiveHeading, { passive: true });
     window.addEventListener("resize", updateActiveHeading);
 
     return () => {
@@ -389,7 +412,6 @@ export default function ArticleDetailClient({
     const containerRect = container.getBoundingClientRect();
     const itemRect = activeItem.getBoundingClientRect();
 
-    // 只在 active item 真正超出可视区域时才滚动，避免底部抖动
     const isAboveView = itemRect.top < containerRect.top;
     const isBelowView = itemRect.bottom > containerRect.bottom;
 
@@ -400,6 +422,7 @@ export default function ArticleDetailClient({
       behavior: "smooth",
     });
   }, [activeId]);
+
   useEffect(() => {
     fetch(`/api/articles/${article.id}/view`, {
       method: "POST",
@@ -455,9 +478,7 @@ export default function ArticleDetailClient({
         </header>
 
         <article ref={articleRef} className="prose w-full !max-w-none min-w-0">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-            {renderedContent}
-          </ReactMarkdown>
+          <ArticleMarkdown content={renderedContent} />
         </article>
 
         <CommentClient

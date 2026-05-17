@@ -175,6 +175,25 @@ function ParticlesBackground() {
       mouse.x = event.clientX;
       mouse.y = event.clientY;
       mouse.active = true;
+
+      // 如果点击的是站内链接，跳过爆炸特效 + 排斥计算，
+      // 把这个时间片让给路由跳转
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest?.("a");
+      if (link) {
+        const href = link.getAttribute("href");
+        if (
+          href &&
+          !href.startsWith("http") &&
+          !href.startsWith("mailto:") &&
+          !href.startsWith("tel:") &&
+          !href.startsWith("#") &&
+          (!link.target || link.target === "_self")
+        ) {
+          return;
+        }
+      }
+
       mouse.repulseUntil = performance.now() + 250;
       createBurst(event.clientX, event.clientY);
     };
@@ -313,6 +332,20 @@ function ParticlesBackground() {
       }
     };
 
+    // 路由跳转期间暂停动画，让出主线程给 React 水合 / SyntaxHighlighter 解析
+    const handleNavStart = () => {
+      running = false;
+      cancelAnimationFrame(animationFrame);
+      // 清理残留的 burst 粒子和排斥状态，避免跳转完成后突然炸一片
+      burstParticlesRef.current.length = 0;
+      mouseRef.current.repulseUntil = 0;
+    };
+    const handleNavEnd = () => {
+      if (running || document.hidden) return;
+      running = true;
+      animationFrame = requestAnimationFrame(draw);
+    };
+
     resize();
     updateThemeParticleStyle();
 
@@ -336,6 +369,8 @@ function ParticlesBackground() {
     window.addEventListener("mouseleave", handleMouseLeave);
     window.addEventListener("mousedown", handleMouseDown);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("app:navigation-start", handleNavStart);
+    window.addEventListener("app:navigation-end", handleNavEnd);
 
     return () => {
       running = false;
@@ -345,6 +380,8 @@ function ParticlesBackground() {
       window.removeEventListener("mouseleave", handleMouseLeave);
       window.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("app:navigation-start", handleNavStart);
+      window.removeEventListener("app:navigation-end", handleNavEnd);
       themeObserver.disconnect();
 
       cancelAnimationFrame(animationFrame);

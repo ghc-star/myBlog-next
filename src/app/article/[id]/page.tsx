@@ -11,7 +11,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const article = await getArticleById(id);
-  console.log(article);
 
   if (!article) {
     return {
@@ -35,5 +34,5 @@ export default async function ArticlePage({
   if (!article) {
     notFound();
   }
-  return <ArticleDetailClient article={article}></ArticleDetailClient>;
+  return <ArticleDetailClient article={article} />;
 }

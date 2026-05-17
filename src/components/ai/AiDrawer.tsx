@@ -1,22 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { useAiDrawer } from "./useAiDrawer";
 import AiChat from "./AiChat";
 
 export default function AiDrawer() {
   const { open, setOpen } = useAiDrawer();
+  const [overlayMounted, setOverlayMounted] = useState(false);
+
+  // 打开后延迟挂遮罩，避免触发抽屉的那次触摸 / 点击被遮罩拦截关掉
+  useEffect(() => {
+    if (!open) {
+      queueMicrotask(() => setOverlayMounted(false));
+      return;
+    }
+    const timer = window.setTimeout(() => setOverlayMounted(true), 200);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   return (
     <>
-      {/* 遮罩 - 点击关闭 */}
-      {open ? (
+      {open && overlayMounted ? (
         <div
           onClick={() => setOpen(false)}
           className="fixed inset-0 z-60"
         />
       ) : null}
 
-      {/* 抽屉 - 始终挂载，关闭时移出视口 */}
       <aside
         className={`fixed bottom-0 right-0 top-0 z-70 flex w-full flex-col border-l border-(--border-normal) bg-(--card-bg) shadow-2xl transition-transform duration-300 ease-out sm:w-[420px] ${
           open ? "translate-x-0" : "translate-x-full"

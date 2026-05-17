@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArticleRecord } from "@/lib/article";
 
@@ -28,13 +31,25 @@ function toRgba(color: string, alpha: number) {
 }
 
 function ArticleCard({ article }: Props) {
+  const router = useRouter();
   const cardAccentSoft = toRgba(article.color, 0.35);
   const cardShadowColor = toRgba(article.color, 0.28);
 
+  const href = `/article/${article.id}`;
+
+  // 鼠标悬停 / 聚焦时主动预取，命中率比默认 viewport prefetch 高得多
+  const handlePrefetch = () => {
+    router.prefetch(href);
+  };
+
   return (
     <Link
-      href={`/article/${article.id}`}
-      className="group relative overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1 hover:[border-color:var(--card-accent)] hover:[box-shadow:0_8px_18px_-12px_var(--card-shadow-color)]"
+      href={href}
+      onMouseEnter={handlePrefetch}
+      onFocus={handlePrefetch}
+      onTouchStart={handlePrefetch}
+      prefetch
+      className="group relative block overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--card-bg)] p-5 shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1 hover:[border-color:var(--card-accent)] hover:[box-shadow:0_8px_18px_-12px_var(--card-shadow-color)] active:scale-[0.99] active:transition-transform active:duration-75"
       style={
         {
           "--card-accent": article.color,

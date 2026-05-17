@@ -178,3 +178,60 @@ input {
 .animate-scroll-tip {
   animation: float-y 1.8s ease-in-out infinite;
 }
+
+
+/* === AI Mascot 小机器人动画 === */
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+.animate-mascot-bob {
+  animation: mascot-bob 2.4s ease-in-out infinite;
+}
+
+.animate-mascot-blink {
+  animation: mascot-blink 4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+
+@keyframes mascot-bubble {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.9);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -4px) scale(0.95);
+  }
+}
+
+.animate-mascot-bubble {
+  animation: mascot-bubble 4s ease-in-out forwards;
+}
