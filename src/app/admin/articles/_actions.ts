@@ -125,6 +125,7 @@ export async function createArticleAction(
   );
 
   revalidatePath("/");
+  revalidatePath("/about");
   revalidatePath("/archive");
   revalidatePath(`/category/${fields.categorySlug}`);
   revalidatePath(`/article/${id}`);
@@ -174,6 +175,7 @@ export async function updateArticleAction(
   });
 
   revalidatePath("/");
+  revalidatePath("/about");
   revalidatePath("/archive");
   if (existing.categorySlug !== fields.categorySlug) {
     revalidatePath(`/category/${existing.categorySlug}`);
@@ -219,6 +221,7 @@ export async function deleteArticleAction(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/about");
   revalidatePath("/archive");
   revalidatePath(`/category/${existing.categorySlug}`);
   revalidatePath(`/article/${id}`);

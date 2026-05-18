@@ -1,6 +1,8 @@
 import { getArticles, getCategorySummaries } from "@/lib/article";
 import AboutClient from "./AboutClinet";
 
+export const dynamic = "force-dynamic";
+
 export default async function AboutPage() {
   const [articles, categories] = await Promise.all([
     getArticles(),
