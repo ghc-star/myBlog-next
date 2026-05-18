@@ -50,21 +50,41 @@ export interface SiteStats {
   todayUv: number;
 }
 
+// 会话超时时间（分钟）：与上一次访问间隔 >= 该值视为新会话
+const SESSION_TIMEOUT_MINUTES = 30;
+
 export async function getSiteStats(): Promise<SiteStats> {
   await ensureTable();
+  // 总 PV / UV、今日 UV 仍按原口径；今日访问改为"今日开始的会话数"
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT
        COUNT(*) AS total_pv,
        COUNT(DISTINCT visitor_key) AS total_uv,
-       COUNT(CASE WHEN viewed_date = CURDATE() THEN 1 END) AS today_pv,
        COUNT(DISTINCT CASE WHEN viewed_date = CURDATE() THEN visitor_key END) AS today_uv
      FROM site_views`,
   );
   const row = rows[0] ?? {};
+
+  const [sessionRows] = await db.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS today_sessions
+     FROM (
+       SELECT
+         viewed_date,
+         viewed_at,
+         LAG(viewed_at) OVER (PARTITION BY visitor_key ORDER BY viewed_at) AS prev_at
+       FROM site_views
+     ) t
+     WHERE t.viewed_date = CURDATE()
+       AND (t.prev_at IS NULL
+            OR TIMESTAMPDIFF(MINUTE, t.prev_at, t.viewed_at) >= ?)`,
+    [SESSION_TIMEOUT_MINUTES],
+  );
+  const todayPv = Number(sessionRows[0]?.today_sessions ?? 0);
+
   return {
     totalPv: Number(row.total_pv ?? 0),
     totalUv: Number(row.total_uv ?? 0),
-    todayPv: Number(row.today_pv ?? 0),
+    todayPv,
     todayUv: Number(row.today_uv ?? 0),
   };
 }
