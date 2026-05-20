@@ -1,12 +1,7 @@
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-  streamText,
-} from "ai";
+import { createUIMessageStreamResponse } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getChatModel } from "@/lib/ai/provider";
-import { prepareBlogAssistantStream } from "@/lib/ai/langgraph/runner";
+import { streamBlogAssistantUI } from "@/lib/ai/langgraph/runner";
 
 function extractTextFromMessage(msg: unknown): string {
   if (msg && typeof msg === "object") {
@@ -45,35 +40,7 @@ export async function POST(request: NextRequest) {
     content: extractTextFromMessage(message),
   }));
 
-  const prepared = await prepareBlogAssistantStream({ messages });
-
-  if ("fallbackAnswer" in prepared) {
-    const stream = createUIMessageStream({
-      execute({ writer }) {
-        const id = "langgraph-fallback";
-        writer.write({ type: "text-start", id });
-        writer.write({
-          type: "text-delta",
-          id,
-          delta: prepared.fallbackAnswer,
-        });
-        writer.write({ type: "text-end", id });
-      },
-      onError(error) {
-        return error instanceof Error ? error.message : "请求失败，请重试";
-      },
-    });
-
-    return createUIMessageStreamResponse({ stream });
-  }
-
-  const result = streamText({
-    model: getChatModel(),
-    system: prepared.system,
-    prompt: prepared.prompt,
-  });
-
   return createUIMessageStreamResponse({
-    stream: result.toUIMessageStream(),
+    stream: streamBlogAssistantUI({ messages }),
   });
 }

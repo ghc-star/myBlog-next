@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import { ChatOpenAI } from "@langchain/openai";
 
 //前台对话
 export const deepseek = createOpenAI({
@@ -8,6 +9,17 @@ export const deepseek = createOpenAI({
 
 export function getChatModel() {
   return deepseek.chat(process.env.DEEPSEEK_MODEL ?? "deepseek-chat");
+}
+
+export function getLangChainChatModel() {
+  return new ChatOpenAI({
+    model: process.env.DEEPSEEK_MODEL ?? "deepseek-chat",
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+    configuration: {
+      baseURL: process.env.DEEPSEEK_BASE_URL! + "/v1",
+    },
+    temperature: 0.2,
+  });
 }
 
 //后台写作
