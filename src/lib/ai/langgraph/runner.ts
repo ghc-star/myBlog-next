@@ -4,17 +4,19 @@ import {
   AIMessage,
   AIMessageChunk,
   HumanMessage,
+  SystemMessage,
 } from "@langchain/core/messages";
 import { createUIMessageStream } from "ai";
 
 import { blogAssistantAgent } from "./graph";
 
 export type LangGraphChatMessage = {
-  role: "user" | "assistant";
+  role: "system" | "user" | "assistant";
   content: string;
 };
 
 function toLangChainMessage(message: LangGraphChatMessage) {
+  if (message.role === "system") return new SystemMessage(message.content);
   return message.role === "assistant"
     ? new AIMessage(message.content)
     : new HumanMessage(message.content);
@@ -47,16 +49,26 @@ function getMessageContentText(content: unknown): string {
 
 export function streamBlogAssistantUI(input: {
   messages: LangGraphChatMessage[];
+  memoryContext?: string;
+  onFinishText?: (assistantText: string) => Promise<void> | void;
 }) {
   return createUIMessageStream({
     async execute({ writer }) {
       const id = "langgraph-react-answer";
+      let assistantText = "";
       let wroteText = false;
 
       writer.write({ type: "text-start", id });
 
+      const messages = input.memoryContext
+        ? [
+            { role: "system" as const, content: input.memoryContext },
+            ...input.messages,
+          ]
+        : input.messages;
+
       const stream = await blogAssistantAgent.stream(
-        { messages: input.messages.map(toLangChainMessage) },
+        { messages: messages.map(toLangChainMessage) },
         { recursionLimit: 8, streamMode: "messages" },
       );
 
@@ -71,18 +83,25 @@ export function streamBlogAssistantUI(input: {
         if (!text) continue;
 
         wroteText = true;
+        assistantText += text;
         writer.write({ type: "text-delta", id, delta: text });
       }
 
       if (!wroteText) {
+        assistantText = "我暂时没有生成有效回答，请换个问法再试。";
         writer.write({
           type: "text-delta",
           id,
-          delta: "我暂时没有生成有效回答，请换个问法再试。",
+          delta: assistantText,
         });
       }
 
       writer.write({ type: "text-end", id });
+      try {
+        await input.onFinishText?.(assistantText);
+      } catch (error) {
+        console.error("Failed to finish AI chat stream", error);
+      }
     },
     onError(error) {
       return error instanceof Error ? error.message : "请求失败，请重试";

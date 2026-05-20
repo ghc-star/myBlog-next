@@ -2,6 +2,15 @@ import { createUIMessageStreamResponse } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 
 import { streamBlogAssistantUI } from "@/lib/ai/langgraph/runner";
+import {
+  appendChatMessages,
+  formatUserMemoriesForPrompt,
+  loadRecentChatMessages,
+  loadUserMemories,
+  upsertUserMemories,
+} from "@/lib/ai/chat-memory";
+import { extractUserMemories } from "@/lib/ai/memory-extractor";
+import { getCurrentUser } from "@/lib/auth";
 
 function extractTextFromMessage(msg: unknown): string {
   if (msg && typeof msg === "object") {
@@ -33,14 +42,55 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "消息不能为空" }, { status: 400 });
   }
 
-  const messages = rawMessages.map((message) => ({
-    role: ((message as { role?: string })?.role ?? "user") as
-      | "user"
-      | "assistant",
-    content: extractTextFromMessage(message),
-  }));
+  const parsedMessages = rawMessages
+    .map((message) => ({
+      role:
+        (message as { role?: string })?.role === "assistant"
+          ? ("assistant" as const)
+          : ("user" as const),
+      content: extractTextFromMessage(message),
+    }))
+    .filter((message) => message.content.trim());
+
+  const lastUserMessage = [...parsedMessages]
+    .reverse()
+    .find((message) => message.role === "user");
+
+  if (!lastUserMessage) {
+    return NextResponse.json({ message: "消息不能为空" }, { status: 400 });
+  }
+
+  const currentUser = await getCurrentUser();
+  const userId = currentUser ? Number(currentUser.id) : null;
+
+  if (!userId) {
+    return createUIMessageStreamResponse({
+      stream: streamBlogAssistantUI({ messages: parsedMessages }),
+    });
+  }
+
+  const [recentMessages, userMemories] = await Promise.all([
+    loadRecentChatMessages(userId, 6),
+    loadUserMemories(userId),
+  ]);
+  const memoryContext = formatUserMemoriesForPrompt(userMemories);
 
   return createUIMessageStreamResponse({
-    stream: streamBlogAssistantUI({ messages }),
+    stream: streamBlogAssistantUI({
+      messages: [...recentMessages, lastUserMessage],
+      memoryContext,
+      async onFinishText(assistantText) {
+        await appendChatMessages(userId, [
+          { role: "user", content: lastUserMessage.content },
+          { role: "assistant", content: assistantText },
+        ]);
+
+        const memories = await extractUserMemories({
+          userMessage: lastUserMessage.content,
+          assistantMessage: assistantText,
+        });
+        await upsertUserMemories(userId, memories);
+      },
+    }),
   });
 }
