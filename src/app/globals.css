@@ -25,6 +25,8 @@
   --article-code-bg: #111827;
   --article-code-text: #ffffff;
   --particle-rgb: 243, 175, 202;
+  --particle-rgb-border: rgba(243, 175, 202, 0.8);
+  --particle: rgba(0, 0, 0, 0.7);
   --particle-opacity: 0.6;
   --particle-link-opacity: 0.35;
   --particle-mouse-link-opacity: 0.9;
@@ -179,7 +181,6 @@ input {
   animation: float-y 1.8s ease-in-out infinite;
 }
 
-
 /* === AI Mascot 小机器人动画 === */
 @keyframes mascot-bob {
   0%,
@@ -211,7 +212,6 @@ input {
   transform-origin: center;
   transform-box: fill-box;
 }
-
 
 @keyframes mascot-bubble {
   0% {

@@ -73,7 +73,7 @@ export default function AboutClient({
                 delay: 1.5 + index * 0.15,
                 duration: 0.4,
               }}
-              className="rounded-full border border-[var(--theme-accent-border)] bg-[var(--theme-accent-soft)] px-3 py-1 text-xs text-[var(--theme-accent)] sm:px-4 sm:py-1.5 sm:text-sm"
+              className="rounded-full border border-[rgba(244,114,182,0.55)] bg-[rgba(244,114,182,0.12)] px-3 py-1 text-xs text-[#ec4899] sm:px-4 sm:py-1.5 sm:text-sm"
             >
               {tag}
             </motion.span>

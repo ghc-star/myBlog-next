@@ -45,3 +45,5 @@ next-env.d.ts
 
 导学-AI智能博客.md
 面经-AI智能博客.md
+
+.claude/settings.local.json
