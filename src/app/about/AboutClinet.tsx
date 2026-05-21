@@ -62,7 +62,7 @@ export default function AboutClient({
         >
           {[
             "Frontend Developer",
-            "Algorithm Learner",
+            "Full-stack learner",
             "Open Source Enthusiast",
           ].map((tag, index) => (
             <motion.span
@@ -114,7 +114,7 @@ export default function AboutClient({
         className="absolute bottom-4 hidden flex-col items-center gap-2 sm:bottom-6 sm:flex md:-translate-x-8"
       >
         <span className="text-xs tracking-widest text-[var(--text-faint)] uppercase">
-          Scroll
+          {/* Scroll */}
         </span>
 
         <motion.div
