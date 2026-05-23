@@ -7,6 +7,13 @@ import { usePagePhrases } from "./usePagePhrases";
 import AiDrawer from "./AiDrawer";
 
 const SIZE = 64;
+const EDGE_MARGIN = 24;
+const INITIAL_TRANSFORM = `translate3d(calc(100vw - ${SIZE + EDGE_MARGIN}px), calc(100vh - ${SIZE + EDGE_MARGIN}px), 0)`;
+
+function clampToViewport(value: number, viewportSize: number) {
+  const max = Math.max(EDGE_MARGIN, viewportSize - SIZE - EDGE_MARGIN);
+  return Math.max(EDGE_MARGIN, Math.min(value, max));
+}
 
 type Phrase = { text: string; id: number };
 
@@ -145,14 +152,12 @@ export default function AiTrigger() {
 
   // 拖拽 + 位置同步
   useEffect(() => {
-    const margin = 24;
-
     function updateFromOffset() {
       const x = window.innerWidth - SIZE - offsetFromBottomRight.current.rx;
       const y = window.innerHeight - SIZE - offsetFromBottomRight.current.ry;
       posRef.current = {
-        x: Math.max(margin, Math.min(x, window.innerWidth - SIZE - margin)),
-        y: Math.max(margin, Math.min(y, window.innerHeight - SIZE - margin)),
+        x: clampToViewport(x, window.innerWidth),
+        y: clampToViewport(y, window.innerHeight),
       };
       const el = buttonRef.current;
       if (el) {
@@ -160,7 +165,7 @@ export default function AiTrigger() {
       }
     }
 
-    offsetFromBottomRight.current = { rx: margin, ry: margin };
+    offsetFromBottomRight.current = { rx: EDGE_MARGIN, ry: EDGE_MARGIN };
     updateFromOffset();
 
     window.addEventListener("resize", updateFromOffset);
@@ -192,8 +197,8 @@ export default function AiTrigger() {
     if (!info.moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
     info.moved = true;
 
-    const x = Math.max(0, Math.min(window.innerWidth - SIZE, info.posX + dx));
-    const y = Math.max(0, Math.min(window.innerHeight - SIZE, info.posY + dy));
+    const x = clampToViewport(info.posX + dx, window.innerWidth);
+    const y = clampToViewport(info.posY + dy, window.innerHeight);
 
     posRef.current = { x, y };
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -261,6 +266,7 @@ export default function AiTrigger() {
           height: SIZE,
           zIndex: 50,
           touchAction: "none",
+          transform: INITIAL_TRANSFORM,
           userSelect: "none",
           willChange: "transform",
           WebkitTouchCallout: "none",
