@@ -1,9 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 import { useAiDrawer } from "./useAiDrawer";
-import AiChat from "./AiChat";
+
+const AiChat = dynamic(() => import("./AiChat"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-1 items-center justify-center text-sm text-(--text-sub)">
+      AI 助手加载中...
+    </div>
+  ),
+});
 
 export default function AiDrawer() {
   const { open, setOpen } = useAiDrawer();

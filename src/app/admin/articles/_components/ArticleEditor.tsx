@@ -2,9 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useState, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
+import MarkdownPreview from "./LazyMarkdownPreview";
 import PolishDiffOverlay from "./PolishDiffOverlay";
 import { useWriterAi } from "./useWriterAi";
 
@@ -423,13 +422,7 @@ export default function ArticleEditor({
               <>
                 <input type="hidden" name="content" value={content} />
                 <article className="prose max-w-none px-4 py-4 text-sm leading-7 text-(--text-strong)">
-                  {content.trim() ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {content}
-                    </ReactMarkdown>
-                  ) : (
-                    <p className="text-(--text-faint)">这里会显示预览内容</p>
-                  )}
+                  <MarkdownPreview content={content} />
                 </article>
               </>
             )}

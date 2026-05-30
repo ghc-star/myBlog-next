@@ -4,8 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useRef, useEffect, useState } from "react";
 import { Send } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+
+import AssistantMarkdown from "./LazyAssistantMarkdown";
 
 function getMessageText(msg: {
   parts: Array<{ type: string; text?: string }>;
@@ -139,9 +139,7 @@ export default function AiChat() {
                 >
                   {msg.role === "assistant" ? (
                     <div className="prose prose-sm max-w-none overflow-x-auto [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-gray-900 [&_pre]:p-3 [&_pre]:text-sm [&_pre]:text-gray-100 [&_code]:break-all">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {text}
-                      </ReactMarkdown>
+                      <AssistantMarkdown text={text} />
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap">{text}</p>

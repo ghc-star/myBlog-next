@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getArticleStats, getCategorySummaries } from "@/lib/article";
 import { getDailyTrend, getSiteStats } from "@/lib/site-views";
 
-import TrendChart from "./_components/TrendChart";
+import TrendChart from "./_components/LazyTrendChart";
 
 export const dynamic = "force-dynamic";
 
