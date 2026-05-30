@@ -26,7 +26,7 @@ function MobileSidebarMenu() {
       />
 
       <div
-        className={`fixed right-0 top-0 z-50 h-full w-64 bg-[var(--card-bg)] p-6 shadow-2xl transition-all duration-300 ease-out sm:hidden ${
+        className={`fixed right-0 top-0 z-50 h-full w-64 bg-[var(--card-bg)] p-6 text-[var(--text-main)] shadow-2xl transition-[transform,opacity] duration-300 ease-out sm:hidden ${
           mobileMenuOpen
             ? "translate-x-0 opacity-100"
             : "translate-x-full opacity-0"

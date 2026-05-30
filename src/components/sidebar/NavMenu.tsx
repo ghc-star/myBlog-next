@@ -35,7 +35,7 @@ function NavMenu({ onItemClick }: { onItemClick?: () => void }) {
               <Link
                 href={item.path}
                 onClick={onItemClick}
-                className={`flex items-center gap-3 text-sm transition-colors sm:gap-6 sm:text-[16px] transition-all duration-300 ${
+                className={`flex items-center gap-3 text-sm transition-none duration-0 sm:gap-6 sm:text-[16px] sm:transition-colors sm:duration-200 ${
                   active
                     ? "font-semibold text-[var(--text-strong)]"
                     : "text-[var(--text-sub)] hover:text-[var(--text-title)]"
