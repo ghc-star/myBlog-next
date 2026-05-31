@@ -258,7 +258,10 @@ const ArticleMarkdown = React.memo(function ArticleMarkdown({
   content: string;
 }) {
   return (
-    <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
+    <ReactMarkdown
+      remarkPlugins={remarkPlugins}
+      components={markdownComponents}
+    >
       {content}
     </ReactMarkdown>
   );

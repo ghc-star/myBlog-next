@@ -17,6 +17,12 @@ const AiChat = dynamic(() => import("./AiChat"), {
 export default function AiDrawer() {
   const { open, setOpen } = useAiDrawer();
   const [overlayMounted, setOverlayMounted] = useState(false);
+  const [chatMounted, setChatMounted] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    queueMicrotask(() => setChatMounted(true));
+  }, [open]);
 
   // 打开后延迟挂遮罩，避免触发抽屉的那次触摸 / 点击被遮罩拦截关掉
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function AiDrawer() {
           </button>
         </header>
 
-        <AiChat />
+        {chatMounted ? <AiChat /> : null}
       </aside>
     </>
   );

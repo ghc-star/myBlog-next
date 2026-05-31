@@ -1,4 +1,4 @@
-import coverImage from "@/assets/images/1.png";
+import coverImage from "@/assets/images/1.webp";
 import { demoMarkdown } from "./demoMarkdown";
 
 export interface Article {

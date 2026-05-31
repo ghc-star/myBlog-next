@@ -1,5 +1,5 @@
 import blueImage from "@/assets/images/blue.jpg";
-import redImage from "@/assets/images/1.png";
+import redImage from "@/assets/images/1.webp";
 
 function ArchivePanel() {
   return (

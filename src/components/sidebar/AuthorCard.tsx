@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import avatarUrl from "../../assets/images/1.png";
+import avatarUrl from "../../assets/images/1.webp";
 
 function AuthorCard() {
   return (

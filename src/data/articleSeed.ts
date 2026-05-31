@@ -18,7 +18,7 @@ export interface ArticleSeedItem {
 }
 
 const sharedContent = demoMarkdown;
-const defaultCover = "/covers/1.png";
+const defaultCover = "/covers/1.webp";
 
 export const articles: ArticleSeedItem[] = [
   {

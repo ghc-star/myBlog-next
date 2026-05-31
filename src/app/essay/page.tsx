@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { Metadata } from "next";
 
-import essayImage from "@/assets/images/essay.png";
+import essayImage from "@/assets/images/essay.webp";
 import { getCurrentUser } from "@/lib/auth";
 import { ESSAY_PAGE_LIMIT, listEssays } from "@/lib/essay";
 

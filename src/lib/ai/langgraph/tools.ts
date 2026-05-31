@@ -37,7 +37,8 @@ export const getBlogStatsTool = tool(
   },
   {
     name: "get_blog_stats",
-    description: "获取博客文章总数和分类分布。用户询问博客整体情况、统计、分类数量时使用。",
+    description:
+      "获取博客文章总数和分类分布。用户询问博客整体情况、统计、分类数量时使用。",
     schema: z.object({}),
   },
 );
@@ -61,9 +62,13 @@ export const listBlogArticlesTool = tool(
   },
   {
     name: "list_blog_articles",
-    description: "列出博客文章。用户问博客有哪些文章、文章列表、最近文章时使用。不要向用户展示内部 ID。",
+    description:
+      "列出博客文章。用户问博客有哪些文章、文章列表、最近文章时使用。不要向用户展示内部 ID。",
     schema: z.object({
-      limit: z.number().optional().describe("最多返回几篇文章，默认 20，最多 30。"),
+      limit: z
+        .number()
+        .optional()
+        .describe("最多返回几篇文章，默认 20，最多 30。"),
     }),
   },
 );
@@ -75,13 +80,16 @@ export const recommendBlogArticleTool = tool(
 
     if (!article) return "目前还没有可推荐的文章。";
 
-    const tags = article.tags.length ? `\n- 标签：${article.tags.join("、")}` : "";
+    const tags = article.tags.length
+      ? `\n- 标签：${article.tags.join("、")}`
+      : "";
 
     return `我推荐你先读 ${formatArticleLink(article.id, article.title)}。\n\n这篇文章是博客里浏览量比较高的一篇，适合优先阅读。\n\n- 分类：${article.category}\n- 发布时间：${article.date}${tags}\n- 简介：${article.desc || `这是一篇 ${article.category} 分类下的文章，适合作为了解博客内容的入口。`}`;
   },
   {
     name: "recommend_blog_article",
-    description: "按浏览量推荐一篇博客文章。用户要求推荐文章、推荐一篇值得读的文章时使用。",
+    description:
+      "按浏览量推荐一篇博客文章。用户要求推荐文章、推荐一篇值得读的文章时使用。",
     schema: z.object({}),
   },
 );
@@ -95,7 +103,9 @@ export const listArticlesByCategoryTool = tool(
     );
 
     if (!category) {
-      const categoryText = categories.map((item) => `- ${item.name}`).join("\n");
+      const categoryText = categories
+        .map((item) => `- ${item.name}`)
+        .join("\n");
       return `没有找到「${categoryName}」这个分类。当前分类有：\n${categoryText || "暂无分类"}`;
     }
 
@@ -111,9 +121,12 @@ export const listArticlesByCategoryTool = tool(
   },
   {
     name: "list_articles_by_category",
-    description: "按分类名查找博客文章。用户问某个分类有哪些文章时使用，输入应是用户提到的分类名。",
+    description:
+      "按分类名查找博客文章。用户问某个分类有哪些文章时使用，输入应是用户提到的分类名。",
     schema: z.object({
-      categoryName: z.string().describe("用户提到的分类名，例如 前端、后端、算法。"),
+      categoryName: z
+        .string()
+        .describe("用户提到的分类名，例如 前端、后端、算法。"),
     }),
   },
 );
@@ -133,7 +146,8 @@ export const readBlogArticleTool = tool(
   },
   {
     name: "read_blog_article",
-    description: "读取某篇博客文章内容。用户明确要求阅读、查看、打开某篇文章时使用。",
+    description:
+      "读取某篇博客文章内容。用户明确要求阅读、查看、打开某篇文章时使用。",
     schema: z.object({
       title: z.string().describe("用户要阅读的文章标题或标题关键词。"),
     }),
@@ -156,7 +170,8 @@ export const searchBlogContentTool = tool(
   },
   {
     name: "search_blog_content",
-    description: "搜索博客正文片段。用户问某个技术点、文章内容、博客中是否提到某主题时使用。",
+    description:
+      "搜索博客正文片段。用户问某个技术点、文章内容、博客中是否提到某主题时使用。",
     schema: z.object({
       query: z.string().describe("要在博客内容中搜索的问题或关键词。"),
       topK: z.number().optional().describe("返回片段数量，默认 5，最多 8。"),
@@ -184,7 +199,8 @@ export const getHitokotoTool = tool(
   },
   {
     name: "get_hitokoto",
-    description: "获取一句话、一言、句子。用户说来一句、分享一句、励志一句时使用。",
+    description:
+      "获取一句话、一言、句子。用户说来一句、分享一句、励志一句时使用。",
     schema: z.object({}),
   },
 );
