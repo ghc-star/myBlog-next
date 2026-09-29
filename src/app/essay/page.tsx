@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import { PenLine } from "lucide-react";
 
 import essayImage from "@/assets/images/essay.webp";
 import { getCurrentUser } from "@/lib/auth";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `随笔 | My Blog`,
-    description: "这是我的随笔页面",
+    description: "随手记录当下的想法、灵感与心情",
   };
 }
 
@@ -34,54 +35,47 @@ export default async function EssaysPage() {
     : null;
 
   return (
-    <>
-      <header
-        className={[
-          "relative h-[35vh] w-full",
-          "bg-cover bg-center bg-no-repeat",
-        ].join(" ")}
-        style={{ backgroundImage: `url(${essayImage.src})` }}
-      >
-        <div className="absolute inset-0 bg-black/20" />
-      </header>
-
-      <main
-        className={[
-          "relative -mt-10 min-h-screen overflow-visible px-4 pb-12 sm:px-6 md:px-10 lg:px-16",
-          "bg-[linear-gradient(to_right,rgba(0,0,0,0.04)_1px,transparent_1px)]",
-          "bg-size-[48px_48px]",
-        ].join(" ")}
-      >
-        <div
-          className={[
-            "absolute left-25 -top-15 z-20 flex h-12 w-12 items-center",
-            "rounded-md object-cover",
-          ].join(" ")}
-        >
+    <div className="px-4 pt-5 pb-16 sm:px-6">
+      <div className="mx-auto w-full max-w-[880px] rounded-3xl shadow-[var(--shadow-card)]">
+        {/* 顶部横幅 */}
+        <header className="relative h-[200px] overflow-hidden rounded-t-3xl sm:h-[240px]">
           <Image
             src={essayImage}
             alt="随笔封面"
-            className="h-12 w-12 rounded-md object-cover"
+            fill
+            sizes="(max-width: 640px) 100vw, 880px"
+            priority
+            className="object-cover"
           />
-          <span className="ml-4 text-lg font-semibold text-white">
-            {currentUser?.author ?? "Sara"}
-          </span>
-        </div>
+          {/* 渐变遮罩：保证文字在图片上可读 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/5" />
 
-        <section
-          className={[
-            "relative z-10 mx-auto max-w-[1250px] rounded-xl bg-(--card-bg) px-10 py-4",
-            "shadow-[0_8px_30px_rgba(0,0,0,0.08)]",
-          ].join(" ")}
-        >
+          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white ring-1 ring-white/25 backdrop-blur-sm">
+              <PenLine size={12} />
+              Essays
+            </span>
+
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white drop-shadow-sm sm:text-4xl">
+              随笔
+            </h1>
+
+            <p className="mt-2 max-w-[560px] text-sm leading-6 text-white/80">
+              随手记录当下的想法、灵感与心情，短一点也没关系。
+            </p>
+          </div>
+        </header>
+
+        {/* 内容卡片：与横幅同宽，左右边缘严格对齐 */}
+        <main className="rounded-b-3xl border-x border-b border-(--border-card) bg-(--card-bg) px-4 py-6 sm:px-7 sm:py-8">
           <EssayFeedClient
             initialEssays={essays}
             initialNextCursor={nextCursor}
             isLoggedIn={Boolean(user)}
             currentUser={currentUser}
           />
-        </section>
-      </main>
-    </>
+        </main>
+      </div>
+    </div>
   );
 }

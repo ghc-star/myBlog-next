@@ -1,12 +1,12 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { PenLine } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import EssayCard from "./EssayCard";
 import EssayComposer from "./EssayComposer";
 import type { CurrentEssayUser, EssayDTO } from "./types";
-import { redirectToGithubLogin } from "./utils";
 
 type EssayFeedClientProps = {
   initialEssays: EssayDTO[];
@@ -69,42 +69,45 @@ export default function EssayFeedClient({
   }
 
   return (
-    <div>
+    <div className="space-y-5">
       <EssayComposer
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
         onPublished={handlePublished}
       />
 
-      {!isLoggedIn ? (
-        <p className="mt-6 text-sm text-gray-500">
-          想发布随笔或参与互动？
-          <button
-            type="button"
-            onClick={redirectToGithubLogin}
-            className="ml-2 font-semibold text-(--theme-accent) hover:underline"
-          >
-            使用 GitHub 登录
-          </button>
-        </p>
-      ) : null}
+      <div className="flex items-baseline justify-between px-1">
+        <h2 className="text-sm font-semibold text-(--text-title)">最新随笔</h2>
+        <span className="text-xs text-(--text-faint)">共 {essays.length} 条</span>
+      </div>
 
-      <div className="mt-6 space-y-10">
+      <div className="space-y-4">
         <AnimatePresence initial={false}>
           {essays.length === 0 ? (
-            <p
+            <motion.div
               key="empty"
-              className="py-12 text-center text-sm text-gray-500"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-2xl border border-dashed border-(--border-normal) bg-(--card-bg-soft) px-6 py-14 text-center"
             >
-              还没有随笔，写下第一段想法吧。
-            </p>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-(--card-bg) text-(--text-faint) ring-1 ring-(--border-normal)">
+                <PenLine size={18} />
+              </div>
+              <p className="mt-4 text-sm font-medium text-(--text-strong)">
+                还没有随笔
+              </p>
+              <p className="mt-1 text-xs text-(--text-faint)">
+                写下第一段想法吧。
+              </p>
+            </motion.div>
           ) : (
-            essays.map((essay, index) => (
+            essays.map((essay) => (
               <EssayCard
                 key={essay.id}
                 essay={essay}
                 isLoggedIn={isLoggedIn}
-                isLast={index === essays.length - 1}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
               />
@@ -114,12 +117,12 @@ export default function EssayFeedClient({
       </div>
 
       {cursor ? (
-        <div className="flex justify-center pt-6">
+        <div className="flex justify-center pt-2">
           <button
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="rounded-md border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 transition hover:border-(--theme-accent) hover:text-(--text-title) disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-(--border-normal) bg-(--card-bg) px-5 py-2 text-sm text-(--text-sub) transition hover:border-(--theme-accent) hover:text-(--theme-accent) disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loadingMore ? "加载中..." : "加载更多"}
           </button>
@@ -127,7 +130,7 @@ export default function EssayFeedClient({
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-center text-xs text-rose-500">{error}</p>
+        <p className="text-center text-xs text-rose-500">{error}</p>
       ) : null}
     </div>
   );

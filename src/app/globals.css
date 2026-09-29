@@ -53,7 +53,7 @@ html[data-theme="dark"] {
   --list-round: #7b8a8b;
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.28);
   --shadow-card-hover: 0 12px 30px rgba(0, 0, 0, 0.34);
-  --ring-soft: rrgba(148, 163, 184, 0.14);
+  --ring-soft: rgba(148, 163, 184, 0.14);
   --article-code-bg: #020617;
   --article-code-text: #e2e8f0;
   --particle-rgb: 125, 211, 252;
