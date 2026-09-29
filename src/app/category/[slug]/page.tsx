@@ -2,6 +2,13 @@ import { notFound } from "next/navigation";
 import ArticleCard from "@/components/article/ArticleCard";
 import { getArticlesByCategorySlug, getCategorySummaries } from "@/lib/article";
 
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const categories = await getCategorySummaries();
+  return categories.map((category) => ({ slug: category.slug }));
+}
+
 export default async function CategoryPage({
   params,
 }: {

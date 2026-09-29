@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getArticles, type ArticleRecord } from "@/lib/article";
 
+export const revalidate = 60;
+
 function getYear(date: string) {
   return new Date(date).getFullYear();
 }

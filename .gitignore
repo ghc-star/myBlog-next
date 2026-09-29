@@ -47,3 +47,6 @@ next-env.d.ts
 面经-AI智能博客.md
 
 .claude/settings.local.json
+# claude 本地产物（嵌套 git 仓库，不要提交）
+.claude/perf-baseline
+.claude/worktrees/

@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
-import { getArticleById } from "@/lib/article";
+import { getArticleById, getArticles } from "@/lib/article";
 
 import ArticleDetailClient from "./ArticleDetailClient";
 import { notFound } from "next/navigation";
+
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const articles = await getArticles();
+  return articles.map((article) => ({ id: article.id }));
+}
 
 export async function generateMetadata({
   params,
