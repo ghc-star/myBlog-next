@@ -20,6 +20,7 @@
     "@qdrant/js-client-rest": "^1.18.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.182",
     "dotenv": "^17.4.2",
     "echarts": "^6.0.0",
