@@ -62,6 +62,113 @@ html[data-theme="dark"] {
   --particle-mouse-link-opacity: 0.7;
 }
 
+/* 注册为颜色类型的自定义属性，让主题变量本身可以参与过渡 */
+@property --background {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f8fafc;
+}
+@property --sidebar-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f8fafc;
+}
+@property --card-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --card-bg-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f9fafb;
+}
+@property --card-bg-overlay {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.78);
+}
+@property --border-normal {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e5e7eb;
+}
+@property --border-card {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(229, 231, 235, 0.8);
+}
+@property --text-main {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f172a;
+}
+@property --text-title {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1f2937;
+}
+@property --text-strong {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #374151;
+}
+@property --text-sub {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #6b7280;
+}
+@property --text-faint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9ca3af;
+}
+@property --text-inverse {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --theme-accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #2563eb;
+}
+@property --theme-accent-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #eff6ff;
+}
+@property --theme-accent-border {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #bfdbfe;
+}
+@property --button-theme {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #000000;
+}
+@property --list-round {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7b8a8b;
+}
+@property --ring-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(15, 23, 42, 0.05);
+}
+@property --article-code-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #111827;
+}
+@property --article-code-text {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -70,6 +177,30 @@ html {
   min-height: 100%;
   scroll-behavior: smooth;
   scrollbar-width: none; /* Firefox */
+  /* 主题颜色变量统一在 html 上过渡：所有元素每帧直接取插值后的变量值，
+     天然同步变色，不会因为各自的 transition 时长不同而先后变化 */
+  transition:
+    --background 0.35s ease,
+    --sidebar-bg 0.35s ease,
+    --card-bg 0.35s ease,
+    --card-bg-soft 0.35s ease,
+    --card-bg-overlay 0.35s ease,
+    --border-normal 0.35s ease,
+    --border-card 0.35s ease,
+    --text-main 0.35s ease,
+    --text-title 0.35s ease,
+    --text-strong 0.35s ease,
+    --text-sub 0.35s ease,
+    --text-faint 0.35s ease,
+    --text-inverse 0.35s ease,
+    --theme-accent 0.35s ease,
+    --theme-accent-soft 0.35s ease,
+    --theme-accent-border 0.35s ease,
+    --button-theme 0.35s ease,
+    --list-round 0.35s ease,
+    --ring-soft 0.35s ease,
+    --article-code-bg 0.35s ease,
+    --article-code-text 0.35s ease;
 }
 
 html::-webkit-scrollbar {
@@ -81,9 +212,59 @@ body {
   font-family: Arial, sans-serif;
   background: var(--background);
   color: var(--text-main);
-  transition:
-    background-color 0.35s ease,
-    color 0.35s ease;
+}
+
+/* 主题切换瞬间由 JS 给 html 加上 .theme-switching：
+   1) 阴影变量无法注册插值，用通配规则统一过渡 box-shadow（非继承属性，不会层层追逐）；
+   2) 同时覆盖各元素自身的过渡，避免它们对每帧变化的变量值再做二次插值导致滞后 */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: box-shadow !important;
+  transition-duration: 0.35s !important;
+  transition-timing-function: ease !important;
+  transition-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
+  html.theme-switching *,
+  html.theme-switching *::before,
+  html.theme-switching *::after {
+    transition: none !important;
+  }
+}
+
+/* === 主题"掀开"效果（支持 View Transition API 的浏览器） === */
+/* 禁用默认的交叉淡化：旧主题原样垫底，新主题由圆形揭示盖上来 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* 圆心/半径由 JS 在点击时写到 html 的 --peel-x / --peel-y / --peel-r */
+@keyframes theme-peel {
+  from {
+    clip-path: circle(0px at var(--peel-x, 0px) var(--peel-y, 0px));
+  }
+  to {
+    clip-path: circle(var(--peel-r, 150vmax) at var(--peel-x, 0px) var(--peel-y, 0px));
+  }
+}
+
+::view-transition-new(root) {
+  animation: theme-peel 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 掀开期间新旧主题瞬间切换，动画完全交给揭示效果，避免快照里出现半程颜色 */
+html.theme-instant,
+html.theme-instant *,
+html.theme-instant *::before,
+html.theme-instant *::after {
+  transition: none !important;
 }
 
 a {

@@ -2,6 +2,7 @@
 
 import { ToggleLeft, ToggleRight } from "lucide-react";
 import { useThemeStore } from "../../store/useThemeStore";
+import { markThemePeelOrigin } from "@/lib/themePeel";
 
 function ThemeToggle() {
   const theme = useThemeStore((state) => state.theme);
@@ -11,7 +12,15 @@ function ThemeToggle() {
     <button
       type="button"
       className="flex items-center justify-between px-5 text-sm lg:text-[16px]"
-      onClick={toggleTheme}
+      onClick={(e) => {
+        // 记录按钮中心作为"掀开"圆心，主题切换时从这一点圆形揭示新主题；
+        // 元素不可见时 rect 为 0，此时不记录，走淡入淡出兜底
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          markThemePeelOrigin(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+        toggleTheme();
+      }}
     >
       {theme === "dark" ? (
         <ToggleRight size={20} strokeWidth={1.6} color="var(--button-theme)" />
