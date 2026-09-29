@@ -7,12 +7,18 @@ config({ path: ".env.local" });
 config();
 
 async function main() {
+  // 托管数据库（如 TiDB Cloud）强制 TLS；本地 MySQL 没开 SSL，不能带上
+  const host = process.env.DB_HOST ?? "";
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(host);
   const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
+    host,
     port: Number(process.env.DB_PORT ?? 3306),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    ...(isLocal
+      ? {}
+      : { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }),
   });
   for (const article of articles) {
     await db.execute(

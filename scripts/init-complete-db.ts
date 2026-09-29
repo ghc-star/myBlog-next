@@ -23,13 +23,20 @@ const appUser = process.env.DB_USER || "dianping";
 const adminUser = process.env.DB_ADMIN_USER || "root";
 const adminPassword = process.env.DB_ADMIN_PASSWORD ?? "root";
 
+// 托管数据库（如 TiDB Cloud）强制 TLS；本地 MySQL 没开 SSL，不能带上
+const host = process.env.DB_HOST || "localhost";
+const isLocal = ["localhost", "127.0.0.1", "::1"].includes(host);
+
 async function main() {
   console.log(`正在以 ${adminUser} 连接 MySQL...`);
   const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || "localhost",
+    host,
     port: Number(process.env.DB_PORT || 3306),
     user: adminUser,
     password: adminPassword,
+    ...(isLocal
+      ? {}
+      : { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }),
   });
   console.log("✅ 已连接 MySQL");
 
@@ -65,13 +72,21 @@ async function main() {
     console.log(`✓ ${name}`);
   }
 
+  // 本地 MySQL 才需要手动授权；TiDB Cloud 等托管库的账号由平台管理，GRANT 会失败
   console.log(`\n正在给 ${appUser} 授权...`);
-  await conn.query(
-    `GRANT ALL PRIVILEGES ON ${dbName}.* TO ?@'localhost'`,
-    [appUser],
-  );
-  await conn.query("FLUSH PRIVILEGES");
-  console.log("✓ 授权完成");
+  try {
+    await conn.query(
+      `GRANT ALL PRIVILEGES ON ${dbName}.* TO ?@'localhost'`,
+      [appUser],
+    );
+    await conn.query("FLUSH PRIVILEGES");
+    console.log("✓ 授权完成");
+  } catch (error) {
+    console.warn(
+      "⚠ 跳过授权（托管数据库由平台管理账号，无需 GRANT）:",
+      error instanceof Error ? error.message : error,
+    );
+  }
 
   const [tables] = await conn.query<RowDataPacket[]>(
     `SELECT TABLE_NAME FROM information_schema.tables
