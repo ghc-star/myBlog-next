@@ -51,3 +51,4 @@ next-env.d.ts
 .claude/perf-baseline
 .claude/worktrees/
 myblog-dump.sql
+myblog-data.sql

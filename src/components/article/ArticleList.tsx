@@ -16,11 +16,16 @@ function ArticleList({ articles, currentPage, totalPages }: ArticleListProps) {
 
   return (
     <div className="my-3 flex flex-col gap-5">
-      {articles.map((item) => (
-        <ArticleCard key={item.id} article={item} />
-      ))}
+      {articles.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--card-bg)] px-6 py-16 text-center text-sm text-[var(--text-sub)] shadow-[var(--shadow-card)]">
+          暂无文章
+        </div>
+      ) : (
+        articles.map((item) => <ArticleCard key={item.id} article={item} />)
+      )}
 
-      <div className="flex items-center justify-center gap-3 pt-2">
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
         {hasPrev ? (
           <Link
             href={getPageHref(currentPage - 1)}
@@ -50,7 +55,8 @@ function ArticleList({ articles, currentPage, totalPages }: ArticleListProps) {
             下一页
           </span>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
