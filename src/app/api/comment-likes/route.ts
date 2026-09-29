@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { getCurrentUser } from "@/lib/auth";
+import { ensureLikeTableSchema } from "@/lib/like-tables";
 import { db } from "@/lib/db";
 
 type CommentLikeCountRow = RowDataPacket & {
@@ -13,6 +14,7 @@ type CommentLikeRow = RowDataPacket & {
 };
 
 async function getCommentLikeSummary(commentId: number, userId?: number) {
+  await ensureLikeTableSchema();
   const [countRows] = await db.query<CommentLikeCountRow[]>(
     `
     SELECT COUNT(*) AS count

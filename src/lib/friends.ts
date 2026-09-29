@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { db } from "./db";
@@ -158,15 +159,20 @@ function toFriend(row: RawFriendRow): FriendRecord {
   };
 }
 
-/** 前台用：只返回 active 的，按 sort_order DESC, id DESC */
-export async function getActiveFriends(): Promise<FriendRecord[]> {
-  await ensureTable();
-  const [rows] = await db.query<RawFriendRow[]>(
-    `SELECT * FROM friends WHERE status = 'active'
+/** 前台用：只返回 active 的，按 sort_order DESC, id DESC。
+ *  结果缓存（tag: friends），友链增删改后由后台 action revalidateTag 失效。 */
+export const getActiveFriends = unstable_cache(
+  async (): Promise<FriendRecord[]> => {
+    await ensureTable();
+    const [rows] = await db.query<RawFriendRow[]>(
+      `SELECT * FROM friends WHERE status = 'active'
      ORDER BY sort_order DESC, id DESC`,
-  );
-  return rows.map(toFriend);
-}
+    );
+    return rows.map(toFriend);
+  },
+  ["friends:active"],
+  { tags: ["friends"], revalidate: 300 },
+);
 
 /** admin 用：所有，包括 hidden */
 export async function getAllFriends(): Promise<FriendRecord[]> {

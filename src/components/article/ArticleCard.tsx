@@ -3,10 +3,10 @@
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArticleRecord } from "@/lib/article";
+import type { ArticleSummary } from "@/lib/article";
 
 interface Props {
-  article: ArticleRecord;
+  article: ArticleSummary;
 }
 
 function toRgba(color: string, alpha: number) {

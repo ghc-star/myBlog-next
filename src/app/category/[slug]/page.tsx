@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import ArticleCard from "@/components/article/ArticleCard";
-import { getArticlesByCategorySlug, getCategorySummaries } from "@/lib/article";
+import { getArticleSummaries, getCategorySummaries } from "@/lib/article";
 
 export const revalidate = 60;
 
@@ -15,10 +15,13 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [categories, categoryArticles] = await Promise.all([
+  const [categories, summaries] = await Promise.all([
     getCategorySummaries(),
-    getArticlesByCategorySlug(slug),
+    getArticleSummaries(),
   ]);
+  const categoryArticles = summaries.filter(
+    (article) => article.categorySlug === slug,
+  );
   const category = categories.find((item) => item.slug === slug);
 
   if (!category) {

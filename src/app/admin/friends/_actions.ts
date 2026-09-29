@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { requireAdmin } from "@/lib/admin";
 import {
@@ -76,6 +76,7 @@ function parseFields(formData: FormData): FriendInput & {
 }
 
 function revalidateFriendsPaths() {
+  updateTag("friends");
   revalidatePath("/friends");
   revalidatePath("/admin/friends");
 }

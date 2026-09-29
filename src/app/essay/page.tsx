@@ -3,37 +3,17 @@ import type { Metadata } from "next";
 import { PenLine } from "lucide-react";
 
 import essayImage from "@/assets/images/essay.webp";
-import { getCurrentUser } from "@/lib/auth";
-import { ESSAY_PAGE_LIMIT, listEssays } from "@/lib/essay";
 
 import EssayFeedClient from "./EssayFeedClient";
-import type { CurrentEssayUser } from "./types";
 
-export const dynamic = "force-dynamic";
+// 静态壳：不再读 cookie / 查库，feed 与登录态由客户端从 /api/essays 获取。
+// 好处是本页可被完整预取，切换到随笔页不再有服务端往返。
+export const metadata: Metadata = {
+  title: `随笔 | My Blog`,
+  description: "随手记录当下的想法、灵感与心情",
+};
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: `随笔 | My Blog`,
-    description: "随手记录当下的想法、灵感与心情",
-  };
-}
-
-export default async function EssaysPage() {
-  const user = await getCurrentUser();
-  const { essays, nextCursor } = await listEssays({
-    limit: ESSAY_PAGE_LIMIT,
-    viewerId: user?.id,
-  });
-
-  const currentUser: CurrentEssayUser = user
-    ? {
-        id: user.id,
-        author: user.github_login,
-        avatarUrl: user.avatar_url,
-        profileUrl: user.profile_url,
-      }
-    : null;
-
+export default function EssaysPage() {
   return (
     <div className="px-4 pt-5 pb-16 sm:px-6">
       <div className="mx-auto w-full max-w-[880px] rounded-3xl shadow-[var(--shadow-card)]">
@@ -68,12 +48,7 @@ export default async function EssaysPage() {
 
         {/* 内容卡片：与横幅同宽，左右边缘严格对齐 */}
         <main className="rounded-b-3xl border-x border-b border-(--border-card) bg-(--card-bg) px-4 py-6 sm:px-7 sm:py-8">
-          <EssayFeedClient
-            initialEssays={essays}
-            initialNextCursor={nextCursor}
-            isLoggedIn={Boolean(user)}
-            currentUser={currentUser}
-          />
+          <EssayFeedClient />
         </main>
       </div>
     </div>

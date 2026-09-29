@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -73,6 +74,8 @@ export async function POST(request: NextRequest) {
     userId: user.id,
     content,
   });
+
+  revalidateTag("essays", "max");
 
   const comments = await listEssayComments(essayId);
   return NextResponse.json({ comments });

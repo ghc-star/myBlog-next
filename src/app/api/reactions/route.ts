@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { ensureLikeTableSchema } from "@/lib/like-tables";
 import { RowDataPacket } from "mysql2";
 
 const allowedReactions = [
@@ -19,6 +20,7 @@ function isReactionType(value: string): value is ReactionType {
 }
 
 async function getReactionSummary(articleId: string, userId?: number) {
+  await ensureLikeTableSchema();
   const [countRows] = await db.query<RowDataPacket[]>(
     `
     SELECT reaction,COUNT(*) AS count 

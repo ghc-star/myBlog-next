@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
   }
 
   const id = await createEssay({ userId: user.id, content, mood });
+  revalidateTag("essays", "max");
   const essay = await getEssayById(id, user.id);
 
   return NextResponse.json({ essay }, { status: 201 });

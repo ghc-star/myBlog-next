@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { ensureLikeTableSchema } from "@/lib/like-tables";
 import type { RowDataPacket } from "mysql2";
 
 type CommentRow = RowDataPacket & {
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "Missing articleId" }, { status: 400 });
   }
   const user = await getCurrentUser();
+  await ensureLikeTableSchema();
   const [rows] = await db.query<CommentRow[]>(
     `
     SELECT
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       comments.created_at,
       users.github_login AS author,
       users.avatar_url,
-      COALESCE(comment_like_counts.like_count, 0) AS like_count,
+      (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = comments.id) AS like_count,
       EXISTS (
         SELECT 1
         FROM comment_likes my_comment_likes
@@ -40,11 +42,6 @@ export async function GET(request: NextRequest) {
       ) AS liked_by_me
     FROM comments
     JOIN users ON users.id = comments.user_id
-    LEFT JOIN (
-      SELECT comment_id, COUNT(*) AS like_count
-      FROM comment_likes
-      GROUP BY comment_id
-    ) comment_like_counts ON comment_like_counts.comment_id = comments.id
     WHERE comments.article_id = ? AND comments.status = 'published'
     ORDER BY comments.created_at ASC
     `,
@@ -60,8 +57,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const body = await request.json();
-  console.log(body);
-
   const articleId = String(body.articleId ?? "").trim();
   const content = String(body.content ?? "").trim();
   const parentId = body.parentId ? Number(body.parentId) : null;

@@ -1,7 +1,7 @@
 import MainLayout from "@/components/layout/MainLayout";
 import ArticleList from "@/components/article/ArticleList";
 
-import { getArticles } from "@/lib/article";
+import { getArticleSummaries } from "@/lib/article";
 
 const PAGE_SIZE = 5;
 function getCurrentPage(pageParam?: string) {
@@ -21,7 +21,7 @@ export default async function HomePage({
 }) {
   // 先读 searchParams：?page= 分页使首页按请求动态渲染，也让构建期预渲染在查库前就中止
   const { page } = await searchParams;
-  const articles = await getArticles();
+  const articles = await getArticleSummaries();
   const total = articles.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(getCurrentPage(page), totalPages);

@@ -1,9 +1,6 @@
 import Link from "next/link";
 
 import { getArticleStats, getCategorySummaries } from "@/lib/article";
-import { getDailyTrend, getSiteStats } from "@/lib/site-views";
-
-import TrendChart from "./_components/LazyTrendChart";
 
 export const dynamic = "force-dynamic";
 
@@ -30,46 +27,13 @@ function StatCard({
 }
 
 export default async function AdminDashboardPage() {
-  const [stats, categories, siteStats, trend] = await Promise.all([
+  const [stats, categories] = await Promise.all([
     getArticleStats(),
     getCategorySummaries(),
-    getSiteStats(),
-    getDailyTrend(30),
   ]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-(--text-sub)">
-          站点访问
-        </h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard
-            label="总访问量 (PV)"
-            value={siteStats.totalPv.toLocaleString()}
-          />
-          <StatCard
-            label="总访客数 (UV)"
-            value={siteStats.totalUv.toLocaleString()}
-          />
-          <StatCard
-            label="今日访问"
-            value={siteStats.todayPv.toLocaleString()}
-          />
-          <StatCard
-            label="今日访客"
-            value={siteStats.todayUv.toLocaleString()}
-          />
-        </div>
-      </div>
-
-      <section className="rounded-2xl border border-(--border-normal) bg-(--card-bg) p-5 shadow-(--shadow-card)">
-        <h3 className="mb-4 text-sm font-semibold text-(--text-title)">
-          近 30 天访问趋势
-        </h3>
-        <TrendChart data={trend} />
-      </section>
-
       <div>
         <h2 className="mb-3 text-sm font-semibold text-(--text-sub)">文章</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

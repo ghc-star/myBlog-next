@@ -5,7 +5,7 @@ import ArticleToc, { type TocItem } from "@/components/ArticleRight/ArticleToc";
 import ReactMarkdown, { Components } from "react-markdown";
 import React from "react";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import SyntaxHighlighter from "@/components/article/PrismSyntaxHighlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArticleRecord } from "@/lib/article";
 import CommentClient from "./CommentClient";

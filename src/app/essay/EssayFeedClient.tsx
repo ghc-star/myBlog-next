@@ -2,29 +2,82 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { PenLine } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import EssayCard from "./EssayCard";
 import EssayComposer from "./EssayComposer";
 import type { CurrentEssayUser, EssayDTO } from "./types";
 
 type EssayFeedClientProps = {
-  initialEssays: EssayDTO[];
-  initialNextCursor: number | null;
-  isLoggedIn: boolean;
-  currentUser: CurrentEssayUser;
+  /** 服务端预置的首屏数据（旧用法）。缺省时组件挂载后自行请求 /api/essays */
+  initialEssays?: EssayDTO[];
+  initialNextCursor?: number | null;
+  isLoggedIn?: boolean;
+  currentUser?: CurrentEssayUser | null;
 };
+
+/** 首屏加载占位 */
+function FeedSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-28 animate-pulse rounded-2xl border border-(--border-normal) bg-(--card-bg-soft)"
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function EssayFeedClient({
   initialEssays,
   initialNextCursor,
-  isLoggedIn,
-  currentUser,
+  isLoggedIn: initialIsLoggedIn = false,
+  currentUser: initialCurrentUser = null,
 }: EssayFeedClientProps) {
-  const [essays, setEssays] = useState<EssayDTO[]>(initialEssays);
-  const [cursor, setCursor] = useState<number | null>(initialNextCursor);
+  const hasServerData = initialEssays !== undefined;
+
+  const [essays, setEssays] = useState<EssayDTO[]>(initialEssays ?? []);
+  const [cursor, setCursor] = useState<number | null>(
+    initialNextCursor ?? null,
+  );
+  const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
+  const [currentUser, setCurrentUser] = useState<CurrentEssayUser | null>(
+    initialCurrentUser,
+  );
+  const [booting, setBooting] = useState(!hasServerData);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 页面是静态壳时，首屏数据在挂载后拉取（接口已带登录态与当前用户）
+  useEffect(() => {
+    if (hasServerData) return;
+
+    let cancelled = false;
+    fetch("/api/essays", { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "加载失败");
+        if (cancelled) return;
+        setEssays(data.essays ?? []);
+        setCursor(data.nextCursor ?? null);
+        setIsLoggedIn(Boolean(data.isLoggedIn));
+        setCurrentUser(data.currentUser ?? null);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载失败");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBooting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasServerData]);
 
   const handlePublished = useCallback((created: EssayDTO) => {
     setEssays((prev) => [created, ...prev]);
@@ -68,6 +121,14 @@ export default function EssayFeedClient({
     }
   }
 
+  if (booting) {
+    return (
+      <div className="space-y-5" aria-busy>
+        <FeedSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <EssayComposer
@@ -83,7 +144,14 @@ export default function EssayFeedClient({
 
       <div className="space-y-4">
         <AnimatePresence initial={false}>
-          {essays.length === 0 ? (
+          {error && essays.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-(--border-normal) bg-(--card-bg-soft) px-6 py-14 text-center">
+              <p className="text-sm font-medium text-(--text-strong)">
+                随笔加载失败
+              </p>
+              <p className="mt-1 text-xs text-(--text-faint)">{error}</p>
+            </div>
+          ) : essays.length === 0 ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0, y: 8 }}

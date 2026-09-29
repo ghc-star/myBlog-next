@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
 import { toggleEssayLike } from "@/lib/essay";
@@ -19,5 +20,6 @@ export async function POST(request: NextRequest) {
   }
 
   const summary = await toggleEssayLike(essayId, user.id);
+  revalidateTag("essays", "max");
   return NextResponse.json({ ...summary, isLoggedIn: true });
 }

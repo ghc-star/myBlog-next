@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -124,7 +124,7 @@ export async function createArticleAction(
     ],
   );
 
-  revalidatePath("/");
+  updateTag("articles");
   revalidatePath("/about");
   revalidatePath("/archive");
   revalidatePath(`/category/${fields.categorySlug}`);
@@ -174,7 +174,7 @@ export async function updateArticleAction(
     content: fields.content,
   });
 
-  revalidatePath("/");
+  updateTag("articles");
   revalidatePath("/about");
   revalidatePath("/archive");
   if (existing.categorySlug !== fields.categorySlug) {
@@ -220,7 +220,7 @@ export async function deleteArticleAction(formData: FormData) {
     console.error("[index] 删除文章向量失败:", error);
   }
 
-  revalidatePath("/");
+  updateTag("articles");
   revalidatePath("/about");
   revalidatePath("/archive");
   revalidatePath(`/category/${existing.categorySlug}`);

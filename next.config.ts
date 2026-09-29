@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
         "localhost:3000",
       ],
     },
+    // 动态页（首页等）的客户端路由缓存秒数：30 秒内回访不再请求服务端。
+    // 默认 0，即每次切回动态页都要一次完整的服务端往返。
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
   images: {
     remotePatterns: [

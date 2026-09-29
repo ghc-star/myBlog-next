@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 import { db } from "./db";
@@ -148,7 +149,7 @@ function toComment(row: EssayCommentRow): EssayCommentRecord {
 
 export const ESSAY_PAGE_LIMIT = ESSAY_PAGE_SIZE;
 
-export async function listEssays(options: {
+async function listEssaysUncached(options: {
   limit?: number;
   cursor?: number | null;
   viewerId?: number;
@@ -167,6 +168,8 @@ export async function listEssays(options: {
   }
   params.push(limit + 1);
 
+  // 计数用相关子查询（走 essay_id 索引，只为返回的行计算），
+  // 不要改回 LEFT JOIN 派生表：那会对全表 likes/comments 做 GROUP BY，数据量增长后每次都全表聚合
   const [rows] = await db.query<EssayRow[]>(
     `
     SELECT
@@ -179,8 +182,12 @@ export async function listEssays(options: {
       users.github_login AS author,
       users.avatar_url,
       users.profile_url,
-      COALESCE(essay_like_counts.like_count, 0) AS like_count,
-      COALESCE(essay_comment_counts.comment_count, 0) AS comment_count,
+      (SELECT COUNT(*) FROM essay_likes el WHERE el.essay_id = essays.id) AS like_count,
+      (
+        SELECT COUNT(*)
+        FROM essay_comments ec
+        WHERE ec.essay_id = essays.id AND ec.status = 'published'
+      ) AS comment_count,
       EXISTS (
         SELECT 1
         FROM essay_likes my_likes
@@ -188,17 +195,6 @@ export async function listEssays(options: {
       ) AS liked_by_me
     FROM essays
     JOIN users ON users.id = essays.user_id
-    LEFT JOIN (
-      SELECT essay_id, COUNT(*) AS like_count
-      FROM essay_likes
-      GROUP BY essay_id
-    ) essay_like_counts ON essay_like_counts.essay_id = essays.id
-    LEFT JOIN (
-      SELECT essay_id, COUNT(*) AS comment_count
-      FROM essay_comments
-      WHERE status = 'published'
-      GROUP BY essay_id
-    ) essay_comment_counts ON essay_comment_counts.essay_id = essays.id
     WHERE essays.status = 'published' ${cursorClause}
     ORDER BY essays.id DESC
     LIMIT ?
@@ -213,6 +209,17 @@ export async function listEssays(options: {
 
   return { essays, nextCursor };
 }
+
+/**
+ * 列表结果按（limit, cursor, viewerId）进数据缓存，匿名访客（viewerId 0）共享一份。
+ * 发随笔/删随笔/点赞/评论的接口里 revalidateTag("essays") 即时失效。
+ */
+export const listEssays = unstable_cache(
+  async (options: { limit?: number; cursor?: number | null; viewerId?: number }) =>
+    listEssaysUncached({ ...options, viewerId: options.viewerId ?? 0 }),
+  ["essays:list"],
+  { tags: ["essays"], revalidate: 300 },
+);
 
 export async function getEssayById(
   id: number,
@@ -232,8 +239,12 @@ export async function getEssayById(
       users.github_login AS author,
       users.avatar_url,
       users.profile_url,
-      COALESCE(essay_like_counts.like_count, 0) AS like_count,
-      COALESCE(essay_comment_counts.comment_count, 0) AS comment_count,
+      (SELECT COUNT(*) FROM essay_likes el WHERE el.essay_id = essays.id) AS like_count,
+      (
+        SELECT COUNT(*)
+        FROM essay_comments ec
+        WHERE ec.essay_id = essays.id AND ec.status = 'published'
+      ) AS comment_count,
       EXISTS (
         SELECT 1
         FROM essay_likes my_likes
@@ -241,17 +252,6 @@ export async function getEssayById(
       ) AS liked_by_me
     FROM essays
     JOIN users ON users.id = essays.user_id
-    LEFT JOIN (
-      SELECT essay_id, COUNT(*) AS like_count
-      FROM essay_likes
-      GROUP BY essay_id
-    ) essay_like_counts ON essay_like_counts.essay_id = essays.id
-    LEFT JOIN (
-      SELECT essay_id, COUNT(*) AS comment_count
-      FROM essay_comments
-      WHERE status = 'published'
-      GROUP BY essay_id
-    ) essay_comment_counts ON essay_comment_counts.essay_id = essays.id
     WHERE essays.id = ? AND essays.status = 'published'
     LIMIT 1
     `,

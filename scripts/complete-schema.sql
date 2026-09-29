@@ -70,9 +70,11 @@ CREATE TABLE IF NOT EXISTS article_likes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   article_id VARCHAR(255) NOT NULL,
   ip_address VARCHAR(45) NOT NULL,
+  user_id INT UNSIGNED NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_article_ip (article_id, ip_address),
   INDEX idx_article_id (article_id),
+  INDEX idx_article_user (article_id, user_id),
   FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -80,11 +82,13 @@ CREATE TABLE IF NOT EXISTS article_likes (
 CREATE TABLE IF NOT EXISTS article_reactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   article_id VARCHAR(255) NOT NULL,
-  reaction_type ENUM('like', 'love', 'wow', 'sad', 'angry') DEFAULT 'like',
+  reaction VARCHAR(32) NULL DEFAULT 'like',
   ip_address VARCHAR(45) NOT NULL,
+  user_id INT UNSIGNED NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_article_ip_reaction (article_id, ip_address, reaction_type),
+  UNIQUE KEY unique_article_ip_reaction (article_id, ip_address, reaction),
   INDEX idx_article_id (article_id),
+  INDEX idx_reaction_user (article_id, user_id),
   FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -93,7 +97,9 @@ CREATE TABLE IF NOT EXISTS comments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   article_id VARCHAR(255) NOT NULL,
   parent_id INT DEFAULT NULL,
-  nickname VARCHAR(100) NOT NULL,
+  user_id INT UNSIGNED NULL,
+  status ENUM('published','deleted') NOT NULL DEFAULT 'published',
+  nickname VARCHAR(100) NULL DEFAULT '',
   email VARCHAR(255),
   content TEXT NOT NULL,
   ip_address VARCHAR(45),
@@ -110,9 +116,11 @@ CREATE TABLE IF NOT EXISTS comment_likes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   comment_id INT NOT NULL,
   ip_address VARCHAR(45) NOT NULL,
+  user_id INT UNSIGNED NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_comment_ip (comment_id, ip_address),
   INDEX idx_comment_id (comment_id),
+  INDEX idx_comment_user (comment_id, user_id),
   FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -174,19 +182,6 @@ CREATE TABLE IF NOT EXISTS friends (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_friends_status_order (status, sort_order DESC, id DESC),
   INDEX idx_friends_applied (applied_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ========== 站点统计 ==========
-
--- 站点访问记录表
-CREATE TABLE IF NOT EXISTS site_views (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  visitor_key VARCHAR(64) NOT NULL,
-  path VARCHAR(255) NOT NULL,
-  viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  viewed_date DATE NOT NULL,
-  INDEX idx_site_views_date (viewed_date),
-  INDEX idx_site_views_visitor_date (visitor_key, viewed_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========== AI 相关 ==========

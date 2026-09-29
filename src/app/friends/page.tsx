@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 
 import { getActiveFriends, type FriendRecord } from "@/lib/friends";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "友情链接 | My Blog",
   description: "博客的友链页面",

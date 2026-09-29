@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getArticles, type ArticleRecord } from "@/lib/article";
+import { getArticleSummaries, type ArticleSummary } from "@/lib/article";
 
 export const revalidate = 60;
 
@@ -20,7 +20,7 @@ function getDayText(date: string) {
 }
 
 export default async function ArchivePage() {
-  const articles = await getArticles();
+  const articles = await getArticleSummaries();
   const sortedArticles = [...articles].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
@@ -41,7 +41,7 @@ export default async function ArchivePage() {
       map[year][month].push(article);
       return map;
     },
-    {} as Record<number, Record<number, ArticleRecord[]>>,
+    {} as Record<number, Record<number, ArticleSummary[]>>,
   );
 
   const years = Object.keys(archiveMap)

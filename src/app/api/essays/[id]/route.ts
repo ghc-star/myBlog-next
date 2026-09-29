@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
 import { deleteEssay, getEssayById } from "@/lib/essay";
@@ -52,6 +53,8 @@ export async function DELETE(
       { status: 403 },
     );
   }
+
+  revalidateTag("essays", "max");
 
   return NextResponse.json({ success: true });
 }

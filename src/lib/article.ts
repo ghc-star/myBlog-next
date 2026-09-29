@@ -1,8 +1,11 @@
 import "server-only";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { RowDataPacket } from "mysql2";
 
-export interface ArticleRecord {
+/** 列表/卡片用的文章字段，不含正文（正文只进详情页和搜索索引） */
+export interface ArticleSummary {
   id: string;
   title: string;
   desc: string;
@@ -11,13 +14,14 @@ export interface ArticleRecord {
   category: string;
   categorySlug: string;
   cover: string | null;
-  content: string;
   color: string;
   publishedAt: string;
   updatedAt: string;
   visits: number;
   comments: number;
 }
+
+export type ArticleRecord = ArticleSummary & { content: string };
 
 export interface CategorySummary {
   name: string;
@@ -50,6 +54,8 @@ type RawCategorySummaryRow = RowDataPacket & {
   color: string | null;
 };
 
+type RawArticleSummaryRow = Omit<RawArticleRow, "content">;
+
 function parseTags(tags: unknown): string[] {
   if (Array.isArray(tags)) {
     return tags;
@@ -68,7 +74,7 @@ function parseTags(tags: unknown): string[] {
     return [];
   }
 }
-function toArticle(row: RawArticleRow): ArticleRecord {
+function toSummary(row: RawArticleSummaryRow): ArticleSummary {
   return {
     id: row.id,
     title: row.title,
@@ -81,7 +87,6 @@ function toArticle(row: RawArticleRow): ArticleRecord {
     category: row.category,
     categorySlug: row.category_slug,
     cover: row.cover,
-    content: row.content,
     color: row.color,
     publishedAt:
       typeof row.published_at === "string"
@@ -95,33 +100,83 @@ function toArticle(row: RawArticleRow): ArticleRecord {
     comments: row.comments,
   };
 }
-export async function getArticles() {
-  const [rows] = await db.query<RawArticleRow[]>(
-    `SELECT * FROM articles ORDER BY published_at DESC`,
-  );
 
-  return rows.map(toArticle);
+function toArticle(row: RawArticleRow): ArticleRecord {
+  return { ...toSummary(row), content: row.content };
 }
-export async function getArticleById(id: string) {
+
+/** 列表用：不查 content，减少传输与缓存体积 */
+const ARTICLE_SUMMARY_COLUMNS = [
+  "id",
+  "title",
+  "`desc`",
+  "`date`",
+  "tags",
+  "category",
+  "category_slug",
+  "cover",
+  "color",
+  "published_at",
+  "updated_at",
+  "visits",
+  "comments",
+].join(", ");
+
+// 数据缓存：文章相关查询统一打 "articles" tag，后台发文/改文/删文时 revalidateTag 即时失效。
+// revalidate: 300 只是兜底 TTL（比如直接改库的情况），正常都走 tag 失效。
+export const getArticleSummaries = unstable_cache(
+  async (): Promise<ArticleSummary[]> => {
+    const [rows] = await db.query<RawArticleRow[]>(
+      `SELECT ${ARTICLE_SUMMARY_COLUMNS} FROM articles ORDER BY published_at DESC`,
+    );
+
+    return rows.map(toSummary);
+  },
+  ["articles:summaries"],
+  { tags: ["articles"], revalidate: 300 },
+);
+
+/** 全量版本（含正文）：搜索、AI 检索、后台列表用 */
+export const getArticles = unstable_cache(
+  async (): Promise<ArticleRecord[]> => {
+    const [rows] = await db.query<RawArticleRow[]>(
+      `SELECT * FROM articles ORDER BY published_at DESC`,
+    );
+
+    return rows.map(toArticle);
+  },
+  ["articles:full"],
+  { tags: ["articles"], revalidate: 300 },
+);
+
+/** 详情页用：需要实时性（ISR 页面级缓存已足够），不走数据缓存。
+ *  React cache 保证 generateMetadata 和页面组件同请求只查一次库。 */
+export const getArticleById = cache(async (id: string) => {
   const [rows] = await db.query<RawArticleRow[]>(
     `SELECT * FROM articles WHERE id = ? LIMIT 1`,
     [id],
   );
 
   return rows[0] ? toArticle(rows[0]) : null;
-}
-export async function getArticlesByCategorySlug(slug: string) {
-  const [rows] = await db.query<RawArticleRow[]>(
-    `SELECT * FROM articles WHERE category_slug = ? ORDER BY published_at DESC`,
-    [slug],
-  );
+});
 
-  return rows.map(toArticle);
-}
+export const getArticlesByCategorySlug = unstable_cache(
+  async (slug: string): Promise<ArticleRecord[]> => {
+    const [rows] = await db.query<RawArticleRow[]>(
+      `SELECT * FROM articles WHERE category_slug = ? ORDER BY published_at DESC`,
+      [slug],
+    );
 
-export async function getCategorySummaries(): Promise<CategorySummary[]> {
-  const [rows] = await db.query<RawCategorySummaryRow[]>(
-    `
+    return rows.map(toArticle);
+  },
+  ["articles:by-category"],
+  { tags: ["articles"], revalidate: 300 },
+);
+
+export const getCategorySummaries = unstable_cache(
+  async (): Promise<CategorySummary[]> => {
+    const [rows] = await db.query<RawCategorySummaryRow[]>(
+      `
     SELECT
       category AS name,
       category_slug AS slug,
@@ -131,14 +186,36 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
     GROUP BY category, category_slug
     ORDER BY count DESC, name ASC
     `,
-  );
+    );
 
-  return rows.map((row) => ({
-    name: row.name,
-    slug: row.slug,
-    count: Number(row.count),
-    color: row.color ?? "#0ea5e9",
-  }));
+    return rows.map((row) => ({
+      name: row.name,
+      slug: row.slug,
+      count: Number(row.count),
+      color: row.color ?? "#0ea5e9",
+    }));
+  },
+  ["articles:categories"],
+  { tags: ["articles"], revalidate: 300 },
+);
+
+/** 把含正文的文章裁成列表字段，避免把全文序列化给客户端组件 */
+export function toArticleSummary(article: ArticleRecord): ArticleSummary {
+  return {
+    id: article.id,
+    title: article.title,
+    desc: article.desc,
+    date: article.date,
+    tags: article.tags,
+    category: article.category,
+    categorySlug: article.categorySlug,
+    cover: article.cover,
+    color: article.color,
+    publishedAt: article.publishedAt,
+    updatedAt: article.updatedAt,
+    visits: article.visits,
+    comments: article.comments,
+  };
 }
 
 
